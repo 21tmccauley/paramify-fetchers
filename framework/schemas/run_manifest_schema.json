@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Run Manifest",
+  "type": "object",
+  "required": ["run"],
+  "properties": {
+    "run": {
+      "type": "object",
+      "required": ["fetchers"],
+      "properties": {
+        "output_dir": {
+          "type": "string",
+          "description": "Base directory for outputs. Runner creates a per-run subdir like run-<timestamp> inside this."
+        },
+        "platforms": {
+          "type": "object",
+          "description": "Per-category (platform) config and auth, inherited by every fetcher in that category. Keyed by category name (e.g. 'aws', 'rippling').",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "config": {
+                "type": "object",
+                "description": "Platform-wide config values. Keys match the category's config_schema (fetchers/_categories/<category>.yaml)."
+              },
+              "auth": {
+                "type": "object",
+                "properties": {
+                  "passthrough_env": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Ambient env vars the runner should let through its whitelist for this platform (e.g. AWS_WEB_IDENTITY_TOKEN_FILE for IRSA). Use for cloud-identity auth where there is no secret value to set."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fetchers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["use"],
+            "properties": {
+              "use": {
+                "type": "string",
+                "description": "Fetcher name (matches the 'name' field in a discovered fetcher.yaml)."
+              },
+              "config": {
+                "type": "object",
+                "description": "Typed config values for this fetcher (matches fetcher.yaml config_schema)."
+              },
+              "secrets": {
+                "type": "object",
+                "description": "Top-level secrets (for non-per_target secrets). Values are ${env:VAR_NAME} references.",
+                "additionalProperties": {"type": "string"}
+              },
+              "targets": {
+                "type": "array",
+                "description": "List of targets for fanout fetchers (those with supports_targets: true).",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "secrets": {
+                      "type": "object",
+                      "description": "Per-target secret references. Values are ${env:VAR_NAME}.",
+                      "additionalProperties": {"type": "string"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

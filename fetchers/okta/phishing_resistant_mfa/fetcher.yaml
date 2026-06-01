@@ -1,0 +1,25 @@
+name: okta_phishing_resistant_mfa
+version: 0.1.0
+description: FedRAMP 20x KSI-IAM-01 evidence. Collects phishing-resistant MFA evidence from Okta.
+category: okta
+
+supports_targets: false
+
+runtime:
+  type: python
+  entry: fetcher.py
+
+output:
+  type: json
+  path: okta_phishing_resistant_mfa.json
+
+secrets:
+- name: api_token
+  env: OKTA_API_TOKEN
+- name: org_url
+  env: OKTA_ORG_URL
+
+evidence_set:
+  reference_id: EVD-OKTA-KSI-IAM-01
+  name: Okta Phishing-Resistant MFA (KSI-IAM-01)
+  instructions: 'Script: okta_phishing_resistant_mfa.py. Uses Okta APIs to collect phishing-resistant MFA (FIDO2/WebAuthn) configuration and adoption evidence. Output: okta_phishing_resistant_mfa.json'

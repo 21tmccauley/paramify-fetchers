@@ -1,0 +1,27 @@
+# Example uploader config (customer-side; optional).
+#
+# Run without it and the uploader uses the defaults baked into each fetcher's
+# evidence_set block. Use it to point at a different Paramify host, override a
+# referenceId for your program, or change upload behavior.
+#
+# Token comes from the PARAMIFY_UPLOAD_API_TOKEN env var (any source: .env,
+# secret manager, CI). It is never put in this file.
+
+paramify:
+  base_url: https://app.paramify.com/api/v0   # optional; default shown
+
+# Per-fetcher overrides. Key = fetcher name (metadata.fetcher_name). Override
+# just reference_id to map a fetcher to a different evidence set in your program;
+# name/instructions/description can be overridden too.
+overrides:
+  okta_phishing_resistant_mfa:
+    reference_id: CUST-OKTA-MFA-01
+
+# Upload a partial-evidence file even when the run's status was "failed"?
+# false = upload anyway (status recorded on the artifact note); true = skip them.
+skip_failed: false
+
+# What to attach as the artifact: the full envelope (self-describing, default)
+# or just the raw payload. Set to "payload" if Paramify ingestion expects the
+# bare evidence without the metadata/payload wrapper.
+artifact_payload: envelope

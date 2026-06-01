@@ -1,0 +1,42 @@
+name: gitlab_project_summary
+version: 0.1.0
+description: FedRAMP 20x KSI-PIY-01 evidence. Inventories configuration files (Terraform, Dockerfiles, YAML configs, etc.) in a GitLab project repository. Single-target per invocation; runner does fanout.
+category: gitlab
+
+supports_targets: true
+
+target_schema:
+  project_id:
+    type: string
+    required: true
+    env: GITLAB_PROJECT_ID
+    description: GitLab project path, e.g. "group/project"
+  url:
+    type: string
+    required: true
+    env: GITLAB_URL
+    description: GitLab instance URL
+  file_patterns:
+    type: string
+    required: false
+    env: GITLAB_FILE_PATTERNS
+    description: Comma-separated list of file extensions or names to inventory (e.g. ".tf,.yml,Dockerfile"). If unset, a default compliance-relevant set is used.
+
+runtime:
+  type: python
+  entry: fetcher.py
+
+output:
+  type: json
+  path: gitlab_project_summary.json
+  aggregation: per_target
+
+secrets:
+- name: api_token
+  env: GITLAB_API_TOKEN
+  per_target: true
+
+evidence_set:
+  reference_id: EVD-GITLAB-PROJECT-SUMMARY
+  name: GitLab Project Summary
+  instructions: 'Script: gitlab_project_summary.sh. Commands executed: GitLab API to list repository tree and file metadata'

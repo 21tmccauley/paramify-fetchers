@@ -1,0 +1,49 @@
+# Example: AWS fetchers fanned out across regions / accounts.
+#
+# AWS fetchers run once per (region, profile) target. `profile` is a named
+# profile in ~/.aws (credentials resolved from there / SSO / instance role);
+# set the profiles up in ~/.aws/config beforehand. This replaces the old
+# AWS_REGION_1/2/N env grouping — group by fetcher, list regions as targets.
+# Each target produces its own file and has an isolated failure domain.
+#
+# IMPORTANT — global vs regional services:
+#   Five fetchers query ACCOUNT-GLOBAL services and are PROFILE-ONLY fanout:
+#   list one target per account, with NO region (region is optional and doesn't
+#   scope the data). Global fetchers: aws_iam_roles, aws_iam_policies,
+#   aws_iam_users_groups, aws_route53_high_availability, aws_s3_encryption_status.
+#   Everything else is regional — list a (region, profile) target per region.
+
+run:
+  output_dir: ./evidence
+
+  platforms:
+    aws:
+      # Optional: for EKS IRSA / instance-role auth, let these ambient vars
+      # through the runner's env whitelist (only take effect if actually set).
+      auth:
+        passthrough_env:
+          - AWS_WEB_IDENTITY_TOKEN_FILE
+          - AWS_ROLE_ARN
+
+  fetchers:
+    # Regional service — fan out across the regions you operate in.
+    - use: aws_guard_duty
+      targets:
+        - region: us-gov-west-1
+          profile: gov_readonly
+        - region: us-gov-east-1
+          profile: gov_readonly
+
+    # Regional service — same shape.
+    - use: aws_rds_encryption_status
+      targets:
+        - region: us-gov-west-1
+          profile: gov_readonly
+
+    # GLOBAL service (IAM) — profile-only: one target per ACCOUNT, no region.
+    # Output is keyed on the profile (aws_iam_roles_<profile>.json).
+    - use: aws_iam_roles
+      config:
+        exclude_aws_managed_roles: true
+      targets:
+        - profile: gov_readonly

@@ -1,0 +1,34 @@
+name: aws_waf_all_rules
+version: 0.1.0
+description: Lists all WAFv2 REGIONAL Web ACLs and captures every rule in each WebACL (full rule objects, no filtering).
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_waf_all_rules.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: true
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-WAF-ALL-RULES
+  name: WAF All Rules
+  instructions: 'Script: waf_all_rules.sh. Commands executed: aws wafv2 list-web-acls, aws wafv2 get-web-acl, aws wafv2 list-rule-groups'

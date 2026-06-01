@@ -1,0 +1,34 @@
+name: aws_route53_high_availability
+version: 0.1.0
+description: Lists Route 53 health checks and their current status across observers (DNS failover evidence).
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_route53_high_availability.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: Optional. Global service — only sets the API endpoint region, does not scope results.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-ROUTE53-HA
+  name: Route 53 High Availability
+  instructions: 'Script: route53_high_availability.sh. Commands executed: aws route53 list-health-checks, aws route53 get-health-check-status'

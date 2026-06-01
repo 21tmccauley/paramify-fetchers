@@ -1,0 +1,25 @@
+name: sentinelone_cloud_detection_rules
+version: 0.1.0
+description: Pulls SentinelOne custom cloud detection rules with last-alert/update timestamps; enriches with a powerQuery summary of recent data-source activity.
+category: sentinelone
+
+supports_targets: false
+
+runtime:
+  type: python
+  entry: fetcher.py
+
+output:
+  type: json
+  path: sentinelone_cloud_detection_rules.json
+
+secrets:
+- name: api_token
+  env: SENTINELONE_API_TOKEN
+- name: api_url
+  env: SENTINELONE_API_URL
+
+evidence_set:
+  reference_id: EVD-S1-CLOUD-RULE
+  name: SentinelOne Cloud Detection Rules
+  instructions: 'Script: clouddetectionrules.py. Calls /web/api/v2.1/cloud-detection/rules with cursor pagination, extracts lastAlertTime and updatedAt fields, writes JSON and CSV summary.'

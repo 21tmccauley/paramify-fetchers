@@ -1,0 +1,34 @@
+name: aws_component_ssl_enforcement_status
+version: 0.1.0
+description: Checks S3 bucket policies for an aws:SecureTransport HTTPS-deny statement and RDS DB parameter groups for rds.force_ssl=1 to report which components enforce SSL/TLS in transit.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_component_ssl_enforcement_status.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: true
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-AWS-SSL-ENFORCEMENT
+  name: AWS Component SSL Enforcement
+  instructions: 'Script: aws_component_ssl_enforcement_status.sh. Commands executed: aws s3api list-buckets, aws s3api get-bucket-policy, aws rds describe-db-instances, aws rds describe-db-parameters'

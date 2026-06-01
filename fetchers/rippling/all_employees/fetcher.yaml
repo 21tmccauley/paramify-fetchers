@@ -1,0 +1,23 @@
+name: rippling_all_employees
+version: 0.1.0
+description: Pulls all Rippling employees (active + terminated) via the Platform API. Evidence for full employee roster including terminated employees.
+category: rippling
+
+supports_targets: false
+
+runtime:
+  type: python
+  entry: fetcher.py
+
+output:
+  type: json
+  path: rippling_all_employees.json
+
+secrets:
+- name: api_token
+  env: RIPPLING_API_TOKEN
+
+evidence_set:
+  reference_id: EVD-RIPPLING-ALL-EMPLOYEES
+  name: Rippling All Employees
+  instructions: 'Script: rippling_all_employees.py. Commands executed: curl GET /platform/api/employees/include_terminated with limit/offset pagination'

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Fetcher Schema",
+  "type": "object",
+  "required": ["name", "version", "description", "runtime", "output", "secrets"],
+  "properties": {
+    "name": { "type": "string" },
+    "version": { "type": "string", "default": "0.1.0" },
+    "description": { "type": "string" },
+    "category": { "type": "string" },
+
+    "runtime": {
+      "type": "object",
+      "required": ["type", "entry"],
+      "properties": {
+        "type":  { "type": "string", "enum": ["python", "bash"] },
+        "entry": { "type": "string" },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Max seconds the runner lets a single invocation run before killing it and marking it failed. Defaults to 600. Raise it for long scanners (e.g. SSL Labs)."
+        }
+      }
+    },
+
+    "output": {
+      "type": "object",
+      "required": ["type", "path"],
+      "properties": {
+        "type": { "type": "string", "enum": ["json", "csv", "html"] },
+        "path": { "type": "string" },
+        "aggregation": {
+          "type": "string",
+          "enum": ["per_target", "aggregate"],
+          "description": "How fanout outputs combine. per_target = one envelope per target invocation; aggregate = one combined envelope from a single invocation that receives the whole target list. Only meaningful when supports_targets is true."
+        }
+      }
+    },
+
+    "secrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "env"],
+        "properties": {
+          "name": { "type": "string" },
+          "env":  { "type": "string" },
+          "per_target": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, this secret is provided per-target during fanout (different value per target invocation). Only meaningful when supports_targets is true."
+          }
+        }
+      }
+    },
+
+    "config_schema": {
+      "type": "object",
+      "description": "Non-secret config knobs this fetcher accepts. Each value declares a field; when it has an `env`, the runner injects the resolved value as that env var. Platform-wide config lives in fetchers/_categories/<category>.yaml instead.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["string", "integer", "boolean"] },
+          "required": { "type": "boolean", "default": false },
+          "env": { "type": "string" },
+          "default": {},
+          "description": { "type": "string" }
+        }
+      }
+    },
+
+    "supports_targets": { "type": "boolean", "default": false },
+
+    "target_schema": {
+      "type": "object",
+      "description": "When supports_targets is true, describes the shape of each target entry the runner will pass in. Free-form for v0.x; the runner will formalize validation when it lands."
+    },
+
+    "depends_on": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+
+    "evidence_set": {
+      "type": "object",
+      "description": "Paramify evidence-set identity for this fetcher (1 fetcher = 1 evidence set). Fetcher-knowledge — what this evidence is and how it's collected — so it ships with the fetcher and is the shipped default the runner carries into the envelope. Customers override reference_id per program in the uploader config; they never edit this. Do NOT add controls/solution_capabilities here — that linkage stays Paramify-side. See docs/uploader_design.md.",
+      "required": ["reference_id", "name"],
+      "properties": {
+        "reference_id": {
+          "type": "string",
+          "description": "Stable idempotency key the uploader get-or-creates the evidence set by (e.g. EVD-OKTA-PHISHING-MFA)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable evidence-set display name."
+        },
+        "instructions": {
+          "type": "string",
+          "description": "How this evidence is collected (e.g. the API calls / commands). Written once into the evidence set on create."
+        },
+        "description": {
+          "type": "string",
+          "description": "Evidence-set description. Defaults to the fetcher's top-level description when omitted."
+        }
+      }
+    }
+  }
+}

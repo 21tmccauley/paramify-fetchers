@@ -1,0 +1,30 @@
+# Minimal example manifest exercising both single-target (okta) and fanout
+# (gitlab) cases.
+#
+# Secrets are referenced via ${env:VAR_NAME} — the runner resolves them from
+# its own environment. Customers can populate those env vars via any mechanism
+# (.env, shell export, AWS Secrets Manager, HashiCorp Vault, K8s secret env
+# mounts, CI provider secret blocks, etc.). The runner doesn't care about the
+# source; it just reads its own os.environ.
+
+run:
+  output_dir: ./evidence
+
+  fetchers:
+    - use: okta_phishing_resistant_mfa
+      secrets:
+        api_token: ${env:OKTA_API_TOKEN}
+        org_url: ${env:OKTA_ORG_URL}
+
+    - use: gitlab_ci_cd_pipeline_config
+      targets:
+        - project_id: group/change-management
+          url: https://gitlab.example.com
+          secrets:
+            api_token: ${env:GITLAB_TOKEN_1}
+
+        - project_id: group/terraform
+          url: https://gitlab.example.com
+          branch: main
+          secrets:
+            api_token: ${env:GITLAB_TOKEN_2}

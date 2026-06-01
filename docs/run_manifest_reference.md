@@ -1,0 +1,241 @@
+# Run Manifest Reference
+
+**Status:** v0.x — manifest format is settled.
+
+**See also:** schema at [`framework/schemas/run_manifest_schema.json`](../framework/schemas/run_manifest_schema.json), working example at [`examples/minimal_run.yaml`](../examples/minimal_run.yaml).
+
+A run manifest is the customer's *intent*: which fetchers to invoke, with what config, against what targets. It lives in the customer's environment, not in the framework repo. Customers typically have multiple manifests — one per kind of run (daily evidence, weekly scan, quarterly access review).
+
+---
+
+## Top-level shape
+
+```yaml
+run:
+  output_dir: ./evidence     # optional; default ./evidence
+  platforms:                 # optional; per-category config + auth (see below)
+    <category>:
+      config: { ... }
+      auth: { passthrough_env: [ ... ] }
+  fetchers:
+    - use: <fetcher_name>
+      config: { ... }        # optional; per-fetcher config, overrides platform config
+      secrets: { ... }       # required when fetcher declares non-per_target secrets
+      targets: [ ... ]       # required iff fetcher declares supports_targets: true
+```
+
+The runner walks `run.fetchers[]` and invokes each in order. v0.x is serial — no parallelism, no `depends_on` ordering, no retries.
+
+---
+
+## Per-fetcher entry
+
+| Field | Required when | Description |
+|---|---|---|
+| `use` | always | Matches the `name` field in a discovered `fetcher.yaml` |
+| `config` | optional | Config values for this fetcher. The runner injects each key declared in the fetcher's (or its category's) `config_schema` as the env var named there. Overrides platform config. |
+| `secrets` | fetcher has non-`per_target` secrets | Map of `<secret_name>: <reference>` |
+| `targets` | fetcher has `supports_targets: true` | Array of target entries |
+
+---
+
+## Platform block (`run.platforms`)
+
+Per-category config and auth, inherited by every fetcher in that category — so
+you set a base URL, region, or auth model once instead of per fetcher. Keyed by
+category name.
+
+```yaml
+run:
+  platforms:
+    rippling:
+      config:
+        page_size: 250                 # overrides the category default
+    aws:
+      auth:
+        passthrough_env:               # cloud-identity auth (e.g. EKS IRSA):
+          - AWS_WEB_IDENTITY_TOKEN_FILE # let these ambient vars through the
+          - AWS_ROLE_ARN                # runner's env whitelist
+```
+
+- `config` — values for keys declared in `fetchers/_categories/<category>.yaml`'s
+  `config_schema`. Merge order: category defaults ← `platforms.<cat>.config` ←
+  per-fetcher `config`.
+- `auth.passthrough_env` — ambient env vars the runner lets through its minimal
+  whitelist for this platform. Use for cloud identity where there's no secret to
+  set (instance roles, IRSA). Added to whatever the category yaml already lists.
+
+Full model: [`config_injection_design.md`](config_injection_design.md). Worked
+example: [`examples/with_platform_config.yaml`](../examples/with_platform_config.yaml).
+
+---
+
+## Secret references
+
+Values in `secrets:` and `targets[].secrets:` use the `${env:VAR_NAME}` syntax. The runner resolves them by reading `VAR_NAME` from its own environment.
+
+```yaml
+secrets:
+  api_token: ${env:OKTA_API_TOKEN}
+  org_url: ${env:OKTA_ORG_URL}
+```
+
+Plain strings (not matching the pattern) pass through unchanged.
+
+How `VAR_NAME` ends up in the runner's environment is up to the customer — `.env`, shell `export`, AWS Secrets Manager → env, HashiCorp Vault, K8s secret env mounts, CI provider secret blocks, etc. The resolver is **source-agnostic**; `.env` is not privileged.
+
+If a referenced env var is unset or empty when the runner resolves it, the runner fails the invocation with a structured error (the fetcher is not invoked).
+
+---
+
+## Single-target example
+
+```yaml
+run:
+  output_dir: ./evidence
+  fetchers:
+    - use: okta_phishing_resistant_mfa
+      secrets:
+        api_token: ${env:OKTA_API_TOKEN}
+        org_url: ${env:OKTA_ORG_URL}
+```
+
+The runner:
+
+1. Resolves both secrets from its own env.
+2. Sets `OKTA_API_TOKEN` and `OKTA_ORG_URL` in the child process env.
+3. Sets `EVIDENCE_DIR=<output_dir>/run-<timestamp>`.
+4. Exec's `fetcher.py`.
+5. Records exit code + duration + output files in `_run_metadata.json`.
+
+---
+
+## Fanout example
+
+```yaml
+run:
+  output_dir: ./evidence
+  fetchers:
+    - use: gitlab_ci_cd_pipeline_config
+      targets:
+        - project_id: group/change-management
+          url: https://gitlab.example.com
+          secrets:
+            api_token: ${env:GITLAB_TOKEN_1}
+
+        - project_id: group/terraform
+          url: https://gitlab.example.com
+          branch: main
+          secrets:
+            api_token: ${env:GITLAB_TOKEN_2}
+```
+
+For each target the runner:
+
+- Reads the fetcher's `target_schema` from its `fetcher.yaml` to know which fields exist and which env vars they map to.
+- Sets each target field (e.g. `project_id`) as the corresponding env var (`GITLAB_PROJECT_ID`).
+- Resolves the per-target `secrets:` block into env vars for the secrets marked `per_target: true` in the fetcher.yaml.
+- Exec's the entry script once per target.
+- Isolates per-target failures — one target's expired token doesn't abort the others.
+
+---
+
+## Output directory layout
+
+The runner creates a per-run subdirectory:
+
+```
+<output_dir>/
+  run-<UTC-timestamp>/
+    <fetcher>.json                          # single-target output (envelope-wrapped)
+    <fetcher>_<target_identifier>.json      # one file per fanout target (envelope-wrapped)
+    _run_metadata.json                      # per-run index (NOT enveloped)
+```
+
+The timestamp is ISO-8601 in UTC with `:` replaced by `-` for filesystem safety: e.g. `run-2026-05-27T14-36-46Z`.
+
+Each evidence file is wrapped by the runner in the standard envelope —
+`{schema_version, metadata, payload}`, where `metadata` carries attribution
+(fetcher name/version, run_id, target, timestamp, status, exit_code) and
+`payload` is the fetcher's raw output. `_run_metadata.json` is the run-level
+index and is not itself enveloped. See [`envelope_design.md`](envelope_design.md).
+
+---
+
+## `_run_metadata.json`
+
+Written at the end of every run. Captures what ran, when, how long, what came out, and whether it succeeded:
+
+```json
+{
+  "run_id": "2026-05-27T14-36-46Z",
+  "started_at": "2026-05-27T14:36:46Z",
+  "completed_at": "2026-05-27T14:36:46Z",
+  "manifest_path": "/abs/path/to/manifest.yaml",
+  "invocations": [
+    {
+      "fetcher_name": "okta_phishing_resistant_mfa",
+      "fetcher_version": "0.1.0",
+      "target": null,
+      "started_at": "...",
+      "completed_at": "...",
+      "duration_sec": 0.266,
+      "exit_code": 0,
+      "outputs": ["okta_phishing_resistant_mfa.json"]
+    },
+    {
+      "fetcher_name": "okta_least_privilege",
+      "exit_code": 1,
+      "outputs": [],
+      "stderr_tail": "...last 4000 chars of stderr — present only on non-zero exit..."
+    },
+    {
+      "fetcher_name": "gitlab_ci_cd_pipeline_config",
+      "fetcher_version": "0.1.0",
+      "target": {"project_id": "group/change-management", "url": "..."},
+      ...
+    }
+  ]
+}
+```
+
+This is the v0.x stand-in for the eventual envelope schema. It records each invocation (one row per single-target fetcher; N rows per fanout fetcher). Failed invocations also carry a bounded `stderr_tail` (last 4000 chars) so an unattended run is diagnosable from the artifact alone.
+
+Each invocation is killed if it exceeds its timeout (default 600s; override per fetcher via `runtime.timeout` in `fetcher.yaml`). A killed invocation is recorded with `exit_code: 124`.
+
+---
+
+## CLI
+
+```bash
+python -m framework.runner list                       # list discovered fetchers
+python -m framework.runner validate <manifest.yaml>   # validate without running
+python -m framework.runner run <manifest.yaml>        # run the manifest
+```
+
+### `validate` checks
+
+- Manifest passes its JSON schema
+- Every `use:` matches a discovered fetcher
+- Single-target manifests don't supply `targets[]`; fanout manifests do
+- Every declared secret (per fetcher + per target) has a corresponding entry in the manifest
+
+`validate` does NOT check whether `${env:...}` references resolve at runtime — that's discovered only at `run` time, with a structured error per failing invocation.
+
+### `run` exit codes
+
+- `0` — every invocation exited 0
+- `1` — at least one invocation exited non-zero, OR the runner couldn't set up an invocation (missing secret, etc.)
+
+The full per-invocation record is in `_run_metadata.json` — use that for selective rerun or partial-success accounting.
+
+---
+
+## What the manifest does NOT yet support
+
+- **`depends_on` ordering** — declared in the fetcher schema for future comparator use; runner does not honor it
+- **Parallel execution** — runner is serial only
+- **Retry policy** — no automatic retries on transient failures
+- **Multiple manifests in one invocation** — one manifest per `run` call
+- **Conditional / templated values** — no Jinja or expressions; literal YAML only
+- **Aggregate mode fanout** — declared in the schema but no fetcher uses it yet, so the runner's iteration logic is `per_target` only

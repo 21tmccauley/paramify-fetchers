@@ -1,0 +1,25 @@
+name: k8s_kubectl_security
+version: 0.1.0
+description: For each EKS cluster, collects pod security contexts, validating webhook configurations, and network policies. Aggregates a least-privilege summary (containers with runAsNonRoot, allowPrivilegeEscalation=false, readOnlyRootFilesystem, drop ALL capabilities, etc.).
+category: k8s
+
+supports_targets: false
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: k8s_kubectl_security.json
+
+secrets:
+- name: aws_profile
+  env: AWS_PROFILE
+- name: aws_region
+  env: AWS_DEFAULT_REGION
+
+evidence_set:
+  reference_id: EVD-KUBECTL-SECURITY
+  name: Kubectl Security
+  instructions: 'Script: kubectl_security.sh. Commands executed: kubectl get clusterroles, kubectl get clusterrolebindings, kubectl get networkpolicies'

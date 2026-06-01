@@ -1,0 +1,18 @@
+description: >
+  Rippling Platform API. Employee roster, current employees, and managed
+  devices. Single API token per tenant.
+
+# Config shared by every rippling fetcher. The runner injects these env vars
+# for any fetcher with category: rippling. Override values per run under
+# manifest platforms.rippling.config.
+config_schema:
+  base_url:
+    type: string
+    default: https://api.rippling.com
+    env: RIPPLING_BASE_URL
+    description: Rippling API base URL. Override for non-default API hosts.
+  page_size:
+    type: integer
+    default: 100
+    env: RIPPLING_PAGE_SIZE
+    description: Pagination page size for list endpoints.

@@ -1,0 +1,25 @@
+name: knowbe4_high_risk_training
+version: 0.1.0
+description: Validates completion of role-specific training (e.g. "Privileged Users Training") for users in high-risk groups (Cloud Ops, IT, DevOps). Reports per-user status with summary metrics.
+category: knowbe4
+
+supports_targets: false
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: knowbe4_high_risk_training.json
+
+secrets:
+- name: api_key
+  env: KNOWBE4_API_KEY
+- name: region
+  env: KNOWBE4_REGION
+
+evidence_set:
+  reference_id: EVD-HIGH-RISK-TRAINING
+  name: KnowBe4 Role Specific Training for High Risk Users
+  instructions: 'Script: high_risk_training.sh. Commands executed: KnowBe4 API calls for role-specific training data'

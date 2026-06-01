@@ -1,0 +1,34 @@
+name: aws_detect_new_aws_resource
+version: 0.1.0
+description: Verifies the new-resource detection pipeline (AWS Config recorders, the New-Resource-Launched-Alert-Rule EventBridge rule and its targets/schedule, the New_AWS_Resource_Launch_Detected SNS topic and subscriptions) and checks the monitoring interval is 5 minutes or less.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_detect_new_aws_resource.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: true
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-DETECT-NEW-RESOURCE
+  name: Detect New AWS Resource
+  instructions: 'Script: detect_new_aws_resource.sh. Commands executed: aws configservice describe-configuration-recorders, aws events list-rules, aws sns list-topics'

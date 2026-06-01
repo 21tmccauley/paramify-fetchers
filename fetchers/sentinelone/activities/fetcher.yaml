@@ -1,0 +1,25 @@
+name: sentinelone_activities
+version: 0.1.0
+description: Pulls SentinelOne activity records for a curated set of FedRAMP-relevant activity types and summarizes by type, time, and description.
+category: sentinelone
+
+supports_targets: false
+
+runtime:
+  type: python
+  entry: fetcher.py
+
+output:
+  type: json
+  path: sentinelone_activities.json
+
+secrets:
+- name: api_token
+  env: SENTINELONE_API_TOKEN
+- name: api_url
+  env: SENTINELONE_API_URL
+
+evidence_set:
+  reference_id: EVD-S1-ACTIVITY
+  name: SentinelOne Activities
+  instructions: 'Script: activityfetcher.py. Calls /web/api/v2.1/activities with activityTypes filter (cursor pagination), aggregates activityType counts and primary descriptions, writes JSON and CSV summary.'

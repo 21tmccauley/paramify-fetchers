@@ -1,0 +1,34 @@
+name: aws_cloudwatch_high_availability
+version: 0.1.0
+description: Lists Auto Scaling policies and CloudWatch alarms (monitoring/scaling evidence).
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_cloudwatch_high_availability.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: true
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-CLOUDWATCH-HA
+  name: CloudWatch High Availability
+  instructions: 'Script: cloudwatch_high_availability.sh. Commands executed: aws cloudwatch describe-alarms, aws logs describe-log-groups'

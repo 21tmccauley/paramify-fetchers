@@ -1,0 +1,34 @@
+name: aws_config_conformance_packs
+version: 0.1.0
+description: Lists AWS Config conformance packs and collects each pack's deployment status, per-rule compliance evaluation results (paginated), and counts of compliant/non-compliant/not-applicable rules. Ships with the Operational-Best-Practices-for-FedRAMP-Low.yaml conformance pack template (resolved relative to the fetcher dir) for reference.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_config_conformance_packs.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: true
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-CONFIG-PACKS
+  name: AWS Config Conformance Packs
+  instructions: 'Script: aws_config_conformance_packs.sh. Commands executed: aws configservice describe-conformance-packs, aws configservice describe-conformance-pack-status, aws configservice get-conformance-pack-compliance-summary, aws configservice get-conformance-pack-compliance-details'

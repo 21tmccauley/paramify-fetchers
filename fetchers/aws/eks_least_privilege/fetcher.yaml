@@ -1,0 +1,34 @@
+name: aws_eks_least_privilege
+version: 0.1.0
+description: For each EKS cluster, collects cluster logging config, pod-identity associations, and installed add-ons. Aggregates a summary of clusters with logging enabled and total pod identities.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_eks_least_privilege.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: true
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-EKS-PRIV
+  name: EKS Least Privilege
+  instructions: 'Script: eks_least_privilege.sh. Commands executed: aws eks describe-cluster, aws eks list-pod-identity-associations, aws eks list-addons'

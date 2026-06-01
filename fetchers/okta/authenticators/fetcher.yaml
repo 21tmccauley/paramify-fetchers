@@ -1,0 +1,24 @@
+name: okta_authenticators
+version: 0.1.0
+description: FedRAMP 20x evidence. Collects Okta FIDO2 authenticator configuration, application policies, enrollment policies, and policy-simulation results.
+category: okta
+
+supports_targets: false
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: okta_authenticators.json
+
+secrets:
+- name: api_token
+  env: OKTA_API_TOKEN
+- name: org_url
+  env: OKTA_ORG_URL
+
+evidence_set:
+  reference_id: EVD-OKTA-AUTHENTICATORS
+  name: Okta Authenticators

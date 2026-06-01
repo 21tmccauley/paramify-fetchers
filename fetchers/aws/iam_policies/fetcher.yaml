@@ -1,0 +1,34 @@
+name: aws_iam_policies
+version: 0.1.0
+description: Lists local (customer-managed) IAM policies and per-policy detail (default version document, attached users/groups/roles).
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_iam_policies.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: Optional. Global service — only sets the API endpoint region, does not scope results.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-IAM-POLICIES
+  name: IAM Policies
+  instructions: 'Script: iam_policies.sh. Commands executed: aws iam list-policies, aws iam get-policy, aws iam get-policy-version'

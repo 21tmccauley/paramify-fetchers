@@ -1,0 +1,25 @@
+description: >
+  Azure evidence fetchers (bash, az CLI + jq). Each fetcher authenticates with
+  the standard Azure credential chain via the az CLI and is scoped to a single
+  subscription via AZURE_SUBSCRIPTION_ID.
+
+# Azure credentials follow the standard az CLI / DefaultAzureCredential chain
+# (cached `az login` session, service principal env vars, workload-identity
+# federation, IMDS managed identity). The runner strips ambient env by default;
+# for cloud-identity auth (e.g. AKS workload identity, managed identity) the
+# customer opts specific vars back in per run under manifest
+# platforms.azure.auth.passthrough_env. Listed here are the common
+# service-principal / workload-identity / managed-identity vars; they only take
+# effect when actually set in the runner's environment, so listing them is safe.
+# Workload identity (AZURE_FEDERATED_TOKEN_FILE) and managed identity need no
+# stored secret and are the recommended paths.
+auth:
+  passthrough_env:
+    - AZURE_TENANT_ID
+    - AZURE_CLIENT_ID
+    - AZURE_CLIENT_SECRET
+    - AZURE_FEDERATED_TOKEN_FILE
+    - AZURE_AUTHORITY_HOST
+    - MSI_ENDPOINT
+    - IDENTITY_ENDPOINT
+    - IDENTITY_HEADER

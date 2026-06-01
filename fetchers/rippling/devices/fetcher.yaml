@@ -1,0 +1,22 @@
+name: rippling_devices
+version: 0.1.0
+description: Pulls company-managed device inventory from Rippling MDM (laptops, desktops, mobile). Requires the Rippling MDM add-on to be enabled.
+category: rippling
+
+supports_targets: false
+
+runtime:
+  type: python
+  entry: fetcher.py
+
+output:
+  type: json
+  path: rippling_devices.json
+
+secrets:
+- name: api_token
+  env: RIPPLING_API_TOKEN
+
+evidence_set:
+  reference_id: EVD-RIPPLING-DEVICES
+  name: Rippling Devices

@@ -1,0 +1,203 @@
+# Authoring a Fetcher
+
+**Status:** v0.x — this doc covers writing a *new* fetcher from scratch. For porting an existing script from `paramify/evidence-fetchers`, see [`porting_playbook.md`](porting_playbook.md) instead.
+
+**See also:** [`design.md`](design.md) for rationale, [`fetcher_contract.md`](fetcher_contract.md) for the contract this fetcher must satisfy, [`framework/schemas/fetcher_schema.json`](../framework/schemas/fetcher_schema.json) for the enforced schema.
+
+---
+
+## When to write new vs. port
+
+- **Port** if a working script exists for the data source in `paramify/evidence-fetchers` (see porting playbook).
+- **Write new** if you're building an integration for a tool that isn't in the upstream repo, or if the existing script is fundamentally the wrong shape.
+
+A "new" fetcher follows the same contract as a ported one, but you don't carry forward as-is plumbing — you build to the v0.x pattern from day one.
+
+---
+
+## Scaffolding
+
+1. **Decide a category and short_name.** Category is the source-system family (e.g. `aws`, `gitlab`, `k8s`). Short_name is the specific evidence type (e.g. `iam_roles_inventory`). Both lowercase, underscore-separated. The full fetcher name combines them: `<category>_<short_name>`.
+
+2. **Copy the template:**
+   ```bash
+   cp -r fetchers/_template fetchers/<category>/<short_name>
+   ```
+   If the category doesn't exist yet, see "Per-category setup" below.
+
+3. **Fill in the files.** Each placeholder in the template needs real content.
+
+---
+
+## `fetcher.yaml`
+
+Fill in every required field with real values:
+
+```yaml
+name: <category>_<short_name>            # globally unique
+version: 0.1.0                            # 0.x.y while pre-contract-conformant
+description: <one or two sentences describing what evidence this collects>
+category: <category>
+
+supports_targets: false   # true only if this fetcher should fan out
+
+runtime:
+  type: python                            # or bash
+  entry: fetcher.py                       # or fetcher.sh
+
+output:
+  type: json                              # json | csv | html
+  path: <category>_<short_name>.json      # relative to EVIDENCE_DIR
+
+secrets:
+  - name: api_token
+    env: <UPPER_SNAKE_ENV_VAR>
+```
+
+Add one `secrets[]` entry per env var the fetcher reads at runtime.
+
+### Fanout (when one fetcher should run against N targets)
+
+If the fetcher should be invoked once per target (per AWS region, per GitLab project, per K8s cluster, etc.):
+
+```yaml
+supports_targets: true
+
+target_schema:
+  project_id:
+    type: string
+    required: true
+    env: <UPPER_CASE_VAR>      # runner sets this env var per target
+    description: ...
+  url:
+    type: string
+    required: true
+    env: <UPPER_CASE_VAR>
+  branch:
+    type: string
+    required: false
+    default: main
+    env: <UPPER_CASE_VAR>
+
+output:
+  type: json
+  path: <category>_<short_name>.json   # base; the fetcher appends a per-target suffix
+  aggregation: per_target               # one envelope per target
+
+secrets:
+  - name: api_token
+    env: <UPPER_CASE_TOKEN>
+    per_target: true                    # different token per target
+```
+
+See [`fetchers/gitlab/ci_cd_pipeline_config/fetcher.yaml`](../fetchers/gitlab/ci_cd_pipeline_config/fetcher.yaml) for a complete worked example.
+
+### Validate
+
+```bash
+python -m framework.runner list   # walks all fetchers; fails if any yaml is schema-invalid
+```
+
+---
+
+## `fetcher.py` (Python)
+
+Use the playbook skeleton — see [`porting_playbook.md`](porting_playbook.md) § 5 for the canonical shape. Key requirements:
+
+- **Call `load_dotenv()`** at the start of `main()` — v0.x dev-loop convenience; harmless when no `.env` exists.
+- **Read `EVIDENCE_DIR`** from `os.environ`, default to `./evidence`.
+- **Read all declared secrets** from `os.environ` by the env var names you declared in `fetcher.yaml`.
+- **For fanout fetchers**, read each `target_schema.<field>.env` from `os.environ` — the runner sets them per target.
+- **Write output** to `<EVIDENCE_DIR>/<output.path>`. For fanout, derive a per-target filename including a sanitized target identifier.
+- **One `logger.info("Evidence saved to %s", path)`** on success — that's the entire success log line.
+- **Return `0`** on success, **`1`** if collection encountered failures. `sys.exit(main())` to propagate.
+
+### Detecting collection failures
+
+You decide how to detect "did this run actually succeed." See [`porting_playbook.md`](porting_playbook.md) § "Exit code convention" for the three patterns in use today. For a fresh fetcher, the simplest pattern is:
+
+```python
+failures: list[dict] = []
+
+def call_api(...):
+    try:
+        return requests.get(...)
+    except requests.exceptions.RequestException as e:
+        failures.append({"endpoint": ..., "type": type(e).__name__, "message": str(e)})
+        return None
+
+# ... collect ...
+
+if failures:
+    logger.error("Encountered %d API failures during collection", len(failures))
+    return 1
+return 0
+```
+
+Catch transient errors at the API-call boundary, track them, exit non-zero if non-empty.
+
+---
+
+## `fetcher.sh` (Bash)
+
+Same shape as Python; see the bash skeleton in [`porting_playbook.md`](porting_playbook.md) § 5. Key differences:
+
+- **`set -o pipefail`** so curl failures propagate through `curl | jq` pipelines.
+- **`chmod +x fetcher.sh`** so the runner can exec it.
+- **Bash subshells** (`| while read; do ...`) can't mutate parent counters. Track failures in a temp file — see [`fetchers/okta/authenticators/fetcher.sh`](../fetchers/okta/authenticators/fetcher.sh) for the pattern.
+- **Required runtime deps** (`curl`, `jq`) should be present on the customer's runner; document any unusual deps in this fetcher's `README.md`.
+
+---
+
+## Per-category setup (first fetcher in a new category)
+
+If you're the first to add a fetcher under a new category:
+
+1. **Create `fetchers/_categories/<category>.yaml`** — even an empty stub is fine; this slot is where category-level access docs / metadata will eventually live.
+2. **If multiple fetchers in this category will share code,** create `fetchers/<category>/_shared/` and drop the shared module(s) in there. The runner discovery skips any directory starting with `_`.
+3. **If new Python deps,** add them to top-level `requirements.txt`.
+
+The runner discovers new categories automatically — no registration step.
+
+---
+
+## Testing
+
+In v0.x, validation is end-to-end against a real or fake tenant:
+
+1. **Set required env vars.** Use whatever mechanism you prefer (`.env`, `export`, secret manager).
+2. **Run the fetcher directly:**
+   ```bash
+   python fetchers/<category>/<short_name>/fetcher.py
+   ```
+   Confirm: exit code is 0, output JSON lands in `EVIDENCE_DIR`, contents look right.
+3. **Then run through the runner:** add an entry to a manifest, then:
+   ```bash
+   python -m framework.runner validate path/to/manifest.yaml
+   python -m framework.runner run      path/to/manifest.yaml
+   ```
+
+You can also smoke-test the wiring with fake creds — set env vars to deliberately-invalid values and confirm the fetcher fails *at the network layer* (DNS / connection error) rather than at "missing env var." That proves the env-passing path is intact.
+
+Unit tests aren't yet a convention. The `tests/` directory in the fetcher scaffold is a placeholder until the testing approach is settled.
+
+---
+
+## What you don't need to do
+
+- **Don't build a CLI argument parser** for `--output-dir`, `--profile`, `--region`. Those are runner-era concerns; v0.x fetchers receive everything via env.
+- **Don't import from `common/`** or any cross-category helper module. The framework's secret resolver eventually replaces what those used to do.
+- **Don't write envelope-wrapped output** (with `metadata` + `payload` blocks). Write a raw evidence dict — the runner wraps it in the standard envelope automatically after the invocation (see [`envelope_design.md`](envelope_design.md)).
+- **Don't add `controls`, `solution_capabilities`, or `validation_rules`** to your `fetcher.yaml`. These were in the old `catalog.json` and were intentionally cut.
+- **Don't add retry logic.** Handle pagination internally; let transient failures bubble up to the failures list and exit code. Retry policy is runner-era.
+- **Don't write per-fetcher tests yet.** Until the framework settles on a testing approach, end-to-end smoke against a real tenant is the verification path.
+
+---
+
+## Reference fetchers
+
+When in doubt, mirror the shape of one of these:
+
+- **Single-target Python:** [`fetchers/okta/phishing_resistant_mfa/`](../fetchers/okta/phishing_resistant_mfa/)
+- **Single-target bash:** [`fetchers/okta/authenticators/`](../fetchers/okta/authenticators/)
+- **Fanout Python:** [`fetchers/gitlab/ci_cd_pipeline_config/`](../fetchers/gitlab/ci_cd_pipeline_config/)

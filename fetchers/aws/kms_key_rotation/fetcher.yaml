@@ -1,0 +1,34 @@
+name: aws_kms_key_rotation
+version: 0.1.0
+description: For each KMS key in the account, reports rotation status, key state/usage, and key policy. Includes the AWS Config rule compliance status for cmk-backing-key-rotation-enabled. Aggregates a per-account rotation coverage percentage.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_kms_key_rotation.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: true
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-KMS-ROT
+  name: KMS Key Rotation
+  instructions: 'Script: kms_key_rotation.sh. Commands executed: aws kms list-keys, aws kms describe-key, aws kms get-key-rotation-status'

@@ -1,0 +1,25 @@
+name: sentinelone_agents
+version: 0.1.0
+description: Pulls SentinelOne agent records (one per managed endpoint) and reports cluster, container, and scan-coverage metrics.
+category: sentinelone
+
+supports_targets: false
+
+runtime:
+  type: python
+  entry: fetcher.py
+
+output:
+  type: json
+  path: sentinelone_agents.json
+
+secrets:
+- name: api_token
+  env: SENTINELONE_API_TOKEN
+- name: api_url
+  env: SENTINELONE_API_URL
+
+evidence_set:
+  reference_id: EVD-S1-AGENT
+  name: SentinelOne Agents
+  instructions: 'Script: agentfetcher.py. Calls /web/api/v2.1/agents (and /web/api/v2.1/agents/count), pages with cursor, collects cluster names and container/pod counts, writes JSON and CSV summary.'

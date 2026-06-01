@@ -1,0 +1,25 @@
+name: sentinelone_user_config
+version: 0.1.0
+description: Pulls SentinelOne user accounts with 2FA enrollment status, admin role counts, and last-login metadata.
+category: sentinelone
+
+supports_targets: false
+
+runtime:
+  type: python
+  entry: fetcher.py
+
+output:
+  type: json
+  path: sentinelone_user_config.json
+
+secrets:
+- name: api_token
+  env: SENTINELONE_API_TOKEN
+- name: api_url
+  env: SENTINELONE_API_URL
+
+evidence_set:
+  reference_id: EVD-S1-USER
+  name: SentinelOne User Config
+  instructions: 'Script: userfetcher.py. Calls the SentinelOne API endpoint /web/api/v2.1/users using ApiToken authorization, pages with cursor, and writes JSON and CSV summary.'

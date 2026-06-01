@@ -1,0 +1,25 @@
+name: knowbe4_developer_specific_training
+version: 0.1.0
+description: Validates completion of developer-specific security training campaigns in KnowBe4. Identifies users in developer-related groups, checks their enrollment and completion status, and reports per-user training status with summary metrics.
+category: knowbe4
+
+supports_targets: false
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: knowbe4_developer_specific_training.json
+
+secrets:
+- name: api_key
+  env: KNOWBE4_API_KEY
+- name: region
+  env: KNOWBE4_REGION
+
+evidence_set:
+  reference_id: EVD-DEVELOPER-SPECIFIC-TRAINING
+  name: KnowBe4 Developer Specific Training
+  instructions: 'Script: developer_specific_training.sh. Commands executed: KnowBe4 API calls for user training data and enrollments'

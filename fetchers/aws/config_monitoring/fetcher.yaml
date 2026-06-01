@@ -1,0 +1,34 @@
+name: aws_config_monitoring
+version: 0.1.0
+description: Checks AWS Config setup (configuration recorders, recorder status, delivery channels) and summarizes recording/health state for continuous-monitoring evidence.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_config_monitoring.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: true
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-CONFIG-MONITORING
+  name: AWS Config Monitoring
+  instructions: 'Script: aws_config_monitoring.sh. Commands executed: aws configservice describe-configuration-recorders, aws configservice describe-configuration-recorder-status, aws configservice describe-delivery-channels'

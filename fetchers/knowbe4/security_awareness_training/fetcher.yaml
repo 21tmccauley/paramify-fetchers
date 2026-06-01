@@ -1,0 +1,25 @@
+name: knowbe4_security_awareness_training
+version: 0.1.0
+description: Validates completion of the annual Security Awareness Training campaign for all active users. Tracks per-user status (completed / in_progress / past_due / not_started) and flags users needing retraining (last completion > 1 year ago).
+category: knowbe4
+
+supports_targets: false
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: knowbe4_security_awareness_training.json
+
+secrets:
+- name: api_key
+  env: KNOWBE4_API_KEY
+- name: region
+  env: KNOWBE4_REGION
+
+evidence_set:
+  reference_id: EVD-SECURITY-AWARENESS-TRAINING
+  name: KnowBe4 Security Awareness Training
+  instructions: 'Script: security_awareness_training.sh. Commands executed: KnowBe4 API calls for user training data and enrollments'

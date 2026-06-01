@@ -1,0 +1,23 @@
+name: rippling_current_employees
+version: 0.1.0
+description: Pulls currently active Rippling employees via the Platform API. Evidence for the current employee roster.
+category: rippling
+
+supports_targets: false
+
+runtime:
+  type: python
+  entry: fetcher.py
+
+output:
+  type: json
+  path: rippling_current_employees.json
+
+secrets:
+- name: api_token
+  env: RIPPLING_API_TOKEN
+
+evidence_set:
+  reference_id: EVD-RIPPLING-CURRENT-EMPLOYEES
+  name: Rippling Current Employees
+  instructions: 'Script: rippling_current_employees.py. Commands executed: curl GET /platform/api/employees with limit/offset pagination'

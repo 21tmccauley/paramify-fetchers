@@ -1,0 +1,33 @@
+name: aws_rds_tls_configuration
+version: 0.1.0
+description: Collects RDS instance TLS/SSL configuration (engine, CA cert, parameter group force_ssl and ssl protocol versions, sync status) plus available CA certificates.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_rds_tls_configuration.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: true
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-RDS-TLS-CONFIG
+  name: RDS TLS Configuration

@@ -1,0 +1,34 @@
+name: aws_guard_duty
+version: 0.1.0
+description: Lists AWS GuardDuty detectors and their configuration (status, finding publishing frequency, and per-data-source statuses for CloudTrail, DNS logs, flow logs, S3 logs, and Kubernetes audit logs), plus a health summary. No detectors is valid evidence that GuardDuty is not enabled.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_guard_duty.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: true
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-GUARD-DUTY
+  name: GuardDuty Configuration
+  instructions: 'Script: guard_duty.sh. Commands executed: aws guardduty list-detectors, aws guardduty get-detector, aws guardduty get-findings'

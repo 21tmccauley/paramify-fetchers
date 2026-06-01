@@ -1,0 +1,25 @@
+name: knowbe4_module_based_summary
+version: 0.1.0
+description: Module-level training completion summary across all active enrollments. Aggregates by training module name with per-module assignment, completion, and rate metrics.
+category: knowbe4
+
+supports_targets: false
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: knowbe4_module_based_summary.json
+
+secrets:
+- name: api_key
+  env: KNOWBE4_API_KEY
+- name: region
+  env: KNOWBE4_REGION
+
+evidence_set:
+  reference_id: EVD-MODULE-BASED-SUMMARY
+  name: KnowBe4 Module Based Summary
+  instructions: 'Script: module_based_summary.sh. Commands executed: KnowBe4 API calls for user training data and enrollments'

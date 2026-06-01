@@ -1,0 +1,38 @@
+# Example: platform-level config + auth, plus a per-fetcher config override.
+#
+# The `platforms:` block holds per-category (platform-wide) config and auth,
+# inherited by every fetcher in that category. Per-fetcher `config:` overrides
+# the platform value. See docs/config_injection_design.md.
+
+run:
+  output_dir: ./evidence
+
+  platforms:
+    # AWS: use cloud identity (EKS IRSA) instead of a handed-over secret.
+    # The runner lets these ambient vars through its env whitelist; there is
+    # no secret value to set. (Profile auth via AWS_PROFILE still works too.)
+    aws:
+      auth:
+        passthrough_env:
+          - AWS_WEB_IDENTITY_TOKEN_FILE
+          - AWS_ROLE_ARN
+
+    # Rippling: override the platform default page_size for this run.
+    rippling:
+      config:
+        page_size: 250
+
+  fetchers:
+    # AWS fetchers are fanout. iam_roles is a GLOBAL service → profile-only
+    # (one target per account, no region). Regional fetchers take (region, profile).
+    # The config override turns on the documented toggle the runner previously stripped.
+    - use: aws_iam_roles
+      config:
+        exclude_aws_managed_roles: true
+      targets:
+        - profile: gov_readonly
+
+    # Inherits platforms.rippling.config (page_size: 250) + base_url default.
+    - use: rippling_all_employees
+      secrets:
+        api_token: ${env:RIPPLING_API_TOKEN}

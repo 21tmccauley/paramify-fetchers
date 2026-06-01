@@ -1,0 +1,17 @@
+description: >
+  AWS evidence fetchers (bash, aws CLI + jq). Each fetcher authenticates with
+  the standard AWS credential chain via AWS_PROFILE + AWS_DEFAULT_REGION.
+
+# AWS credentials follow the standard chain (env keys, ~/.aws profiles, SSO,
+# IMDS instance roles, web identity). The runner strips ambient env by default;
+# for cloud-identity auth (e.g. EKS IRSA) the customer opts specific vars back
+# in per run under manifest platforms.aws.auth.passthrough_env. Listed here are
+# the common IRSA/web-identity vars; they only take effect when actually set in
+# the runner's environment, so listing them is safe.
+auth:
+  passthrough_env:
+    - AWS_WEB_IDENTITY_TOKEN_FILE
+    - AWS_ROLE_ARN
+    - AWS_ROLE_SESSION_NAME
+    - AWS_CONTAINER_CREDENTIALS_RELATIVE_URI
+    - AWS_CONTAINER_CREDENTIALS_FULL_URI

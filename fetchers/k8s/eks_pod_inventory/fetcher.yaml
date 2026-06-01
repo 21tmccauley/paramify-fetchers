@@ -1,0 +1,25 @@
+name: k8s_eks_pod_inventory
+version: 0.1.0
+description: For each EKS cluster in the account/region, lists all pods with their namespace, node, status, and container images. Evidence for pod inventory.
+category: k8s
+
+supports_targets: false
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: k8s_eks_pod_inventory.json
+
+secrets:
+- name: aws_profile
+  env: AWS_PROFILE
+- name: aws_region
+  env: AWS_DEFAULT_REGION
+
+evidence_set:
+  reference_id: EVD-EKS-POD-INVENTORY
+  name: EKS Pod Inventory
+  instructions: 'Script: eks_pod_inventory.sh. Commands executed: kubectl get pods, kubectl describe pods'

@@ -1,0 +1,9 @@
+# Runtime deps for fetchers + framework runner
+python-dotenv
+requests
+pyyaml
+jsonschema
+
+# Web UI (framework/web) — optional unless you run the server
+fastapi
+uvicorn

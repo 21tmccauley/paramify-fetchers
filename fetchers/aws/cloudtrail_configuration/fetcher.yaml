@@ -1,0 +1,34 @@
+name: aws_cloudtrail_configuration
+version: 0.1.0
+description: Lists CloudTrail trails and captures per-trail configuration, logging status, and a summary (logging/multi-region counts, health status, issues).
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_cloudtrail_configuration.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: true
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-CLOUDTRAIL-CONFIG
+  name: CloudTrail Configuration
+  instructions: 'Script: cloudtrail_configuration.sh. Commands executed: aws cloudtrail list-trails, aws cloudtrail get-trail, aws cloudtrail get-trail-status'

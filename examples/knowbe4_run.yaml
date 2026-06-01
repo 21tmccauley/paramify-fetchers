@@ -1,0 +1,17 @@
+# End-to-end test manifest: KnowBe4 module-based training summary.
+#
+# Single fetcher, single source. module_based_summary is chosen because it has
+# NO hardcoded customer group/campaign names — it works against any KnowBe4
+# tenant (the other 3 knowbe4 fetchers match specific group/campaign titles).
+#
+# Set before running:
+#   export KNOWBE4_API_KEY=<your KnowBe4 Reporting API key>
+#   export KNOWBE4_REGION=us        # your tenant's region subdomain: us | eu | ca | uk | de ...
+
+run:
+  output_dir: ./evidence
+  fetchers:
+    - use: knowbe4_module_based_summary
+      secrets:
+        api_key: ${env:KNOWBE4_API_KEY}
+        region: ${env:KNOWBE4_REGION}

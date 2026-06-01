@@ -1,0 +1,41 @@
+name: aws_backup_validation
+version: 0.1.0
+description: Validates backup posture across RDS (retention, backup window, cross-region replication, storage encryption, deletion protection), S3 (versioning, cross-region replication, encryption), and AWS Backup (vaults and recovery points), with coverage summaries. Honors BUCKETS_TO_INCLUDE to limit which S3 buckets are processed.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_backup_validation.json
+  aggregation: per_target
+
+config_schema:
+  buckets_to_include:
+    type: string
+    default: ""
+    env: BUCKETS_TO_INCLUDE
+    description: Space-separated list of S3 bucket names to include. When empty, all buckets are included.
+
+target_schema:
+  region:
+    type: string
+    required: true
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: true
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-BACKUP-VALIDATION
+  name: Backup Validation
+  instructions: 'Script: backup_validation.sh. Commands executed: aws backup list-backup-jobs, aws backup list-recovery-points'

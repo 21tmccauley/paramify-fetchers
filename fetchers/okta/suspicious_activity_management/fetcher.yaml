@@ -1,0 +1,25 @@
+name: okta_suspicious_activity_management
+version: 0.1.0
+description: FedRAMP 20x KSI-IAM-06 evidence. Collects suspicious activity management evidence from Okta.
+category: okta
+
+supports_targets: false
+
+runtime:
+  type: python
+  entry: fetcher.py
+
+output:
+  type: json
+  path: okta_suspicious_activity_management.json
+  
+secrets:
+- name: api_token
+  env: OKTA_API_TOKEN
+- name: org_url
+  env: OKTA_ORG_URL
+
+evidence_set:
+  reference_id: EVD-OKTA-KSI-IAM-06
+  name: Okta Suspicious Activity (KSI-IAM-06)
+  instructions: 'Script: okta_suspicious_activity_management.py. Uses Okta APIs to collect security event monitoring and behavior detection evidence. Output: okta_suspicious_activity_management.json'

@@ -1,0 +1,131 @@
+# Config Injection — Design
+
+**Status:** Implemented (v0.x). Worked example: `examples/with_platform_config.yaml`.
+**Date:** 2026-05-28
+**Solves:** the config-injection gap (shipped fetchers read undeclared config
+env vars that the runner strips) and the ambient-credentials gap (cloud auth
+can't be expressed in the declared-secrets model). See `foundation_review`
+notes in this doc's "Motivation".
+
+---
+
+## Principle (unchanged)
+
+Keep the existing split:
+
+- **Declaration = code-side**, versioned, customers never edit.
+- **Values = customer-side**, live with the run intent (manifest).
+
+Config gets a **platform tier** on *both* sides. We do NOT add customer-editable
+config files inside `fetchers/<category>/` — that recreates the `catalog.json`/
+`.env` sprawl, breaks per-run variation, and causes fork/merge conflicts.
+
+---
+
+## Two new homes (both already exist as empty slots)
+
+### 1. Platform declaration → `fetchers/_categories/<platform>.yaml`
+
+Code-side. Declares the platform's shared config keys, defaults, env mappings,
+and auth model. Ships with the repo.
+
+```yaml
+# fetchers/_categories/aws.yaml
+config_schema:
+  region:
+    type: string
+    required: true
+    env: AWS_DEFAULT_REGION
+auth:
+  mode: profile                 # profile | env | ambient
+  passthrough_env: []           # ambient vars the runner lets through its whitelist
+```
+
+```yaml
+# fetchers/_categories/rippling.yaml
+config_schema:
+  base_url:  { type: string, default: https://api.rippling.com, env: RIPPLING_BASE_URL }
+  page_size: { type: integer, default: 100, env: RIPPLING_PAGE_SIZE }
+secrets:
+  - { name: api_token, env: RIPPLING_API_TOKEN }
+```
+
+### 2. Per-fetcher config keys → `fetcher.yaml` `config_schema`
+
+Same shape; for knobs specific to one fetcher (mirrors `target_schema`):
+
+```yaml
+# fetchers/aws/iam_roles/fetcher.yaml
+config_schema:
+  exclude_aws_managed_roles:
+    type: boolean
+    default: false
+    env: EXCLUDE_AWS_MANAGED_ROLES
+```
+
+---
+
+## Customer-side values → manifest `platforms:` block
+
+Fetcher entries inherit by category; per-fetcher `config:` overrides.
+
+```yaml
+run:
+  output_dir: ./evidence
+
+  platforms:
+    rippling:
+      config:  { page_size: 200 }
+      secrets: { api_token: ${env:RIPPLING_API_TOKEN} }
+    aws:
+      config:  { region: us-gov-west-1 }
+      auth:    { mode: ambient, passthrough_env: [AWS_WEB_IDENTITY_TOKEN_FILE, AWS_ROLE_ARN] }
+
+  fetchers:
+    - use: rippling_all_employees           # inherits rippling platform block
+    - use: aws_iam_roles
+      config: { exclude_aws_managed_roles: true }   # per-fetcher override
+```
+
+A shared `platforms:` block can be factored into a customer-side file the
+manifest references via `include:` — still customer-side, still one-run-one-intent.
+
+---
+
+## Runner behavior
+
+**Merge order** (later wins):
+
+1. `_categories/<platform>.yaml` defaults
+2. manifest `platforms.<category>.config`
+3. manifest per-fetcher `config`
+
+Then validate the merged config against the fetcher's + platform's `config_schema`,
+and inject each key as its declared `env` var — **reusing the existing
+`target_schema.<field>.env` → env mechanism in `executor._build_env`**. This is a
+generalization of fanout's per-target env injection, not a new subsystem.
+
+**Auth / passthrough:** `_build_env` reads the platform `auth.passthrough_env`
+list and adds those specific vars to `_INHERITED_ENV_VARS` for that invocation.
+This keeps the env minimal-by-default while supporting profile, env-key, and
+ambient (IRSA / instance-role) auth — secrets stay source-agnostic (`.env`,
+cloud secret provider, or ambient cloud identity).
+
+---
+
+## What this fixes
+
+- `aws_iam_roles` `EXCLUDE_AWS_MANAGED_ROLES`, all-Rippling `RIPPLING_BASE_URL`/
+  `RIPPLING_PAGE_SIZE`, KnowBe4 group/campaign names → declared, injected, live.
+- AWS/K8s fetchers work under env-key and web-identity/IRSA auth, not just `~/.aws`.
+- The contract clause "every env var read must be declared" becomes satisfiable
+  for config (today only `secrets` had a home).
+
+## Scope notes
+
+- `config_schema` is already an optional field in `fetcher_schema.json` (free-form
+  today) — this proposal gives it the `<field>.env` sub-key and a platform-level
+  counterpart in `_categories/*.yaml`.
+- Fetchers keep reading their env vars exactly as they do now; only the runner's
+  env-population path changes. No fetcher code changes required.
+- Independent of the envelope/uploader/comparator work.

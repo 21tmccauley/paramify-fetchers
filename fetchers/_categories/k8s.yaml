@@ -1,0 +1,17 @@
+description: >
+  Kubernetes / EKS evidence fetchers (bash, aws CLI + kubectl). Each fetcher
+  reaches EKS through the AWS credential chain (AWS_PROFILE + AWS_DEFAULT_REGION
+  and `aws eks update-kubeconfig`).
+
+# k8s fetchers authenticate via AWS, so they share the aws category's ambient-
+# credential needs. The runner strips ambient env by default; for cloud-identity
+# auth (e.g. EKS IRSA / instance roles) the customer opts these back in per run
+# under manifest platforms.k8s.auth.passthrough_env. They only take effect when
+# actually set in the runner's environment, so listing them here is safe.
+auth:
+  passthrough_env:
+    - AWS_WEB_IDENTITY_TOKEN_FILE
+    - AWS_ROLE_ARN
+    - AWS_ROLE_SESSION_NAME
+    - AWS_CONTAINER_CREDENTIALS_RELATIVE_URI
+    - AWS_CONTAINER_CREDENTIALS_FULL_URI

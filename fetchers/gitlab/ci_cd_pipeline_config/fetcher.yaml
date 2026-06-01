@@ -1,0 +1,43 @@
+name: gitlab_ci_cd_pipeline_config
+version: 0.1.0
+description: FedRAMP 20x KSI-CMT-03 evidence. Pulls .gitlab-ci.yml for a GitLab project and analyzes it for test stages, security scanning, deployment jobs, and artifact configuration. Single-target per invocation; runner does fanout.
+category: gitlab
+
+supports_targets: true
+
+target_schema:
+  project_id:
+    type: string
+    required: true
+    env: GITLAB_PROJECT_ID
+    description: GitLab project path, e.g. "group/project"
+  url:
+    type: string
+    required: true
+    env: GITLAB_URL
+    description: GitLab instance URL
+  branch:
+    type: string
+    required: false
+    default: main
+    env: GITLAB_BRANCH
+    description: Branch to read .gitlab-ci.yml from
+
+runtime:
+  type: python
+  entry: fetcher.py
+
+output:
+  type: json
+  path: gitlab_ci_cd_pipeline_config.json
+  aggregation: per_target
+
+secrets:
+- name: api_token
+  env: GITLAB_API_TOKEN
+  per_target: true
+
+evidence_set:
+  reference_id: EVD-GITLAB-CICD-CONFIG
+  name: GitLab CI/CD Pipeline Configuration
+  instructions: 'Script: gitlab_ci_cd_pipeline_config.sh. Commands executed: GitLab API calls to retrieve project .gitlab-ci.yml and pipeline configuration'

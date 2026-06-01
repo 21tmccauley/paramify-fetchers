@@ -1,0 +1,22 @@
+name: paramify_evidence
+version: 0.1.0
+description: >
+  Uploads envelope-wrapped evidence from a run directory to Paramify. For each
+  evidence file it get-or-creates the evidence set by reference_id and attaches
+  the file as an artifact. Idempotent per run.
+
+runtime:
+  type: python
+  entry: uploader.py
+
+# Source-agnostic: the token can come from .env, a secret manager, CI vars, etc.
+secrets:
+  - name: api_token
+    env: PARAMIFY_UPLOAD_API_TOKEN
+
+config_schema:
+  base_url:
+    type: string
+    default: https://app.paramify.com/api/v0
+    env: PARAMIFY_API_BASE_URL
+    description: Paramify REST API v0 base URL.
