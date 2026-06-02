@@ -140,6 +140,11 @@ ModalScreen {
     padding-bottom: 1;
 }
 
+.field-note {
+    color: $text-muted;
+    text-style: italic;
+}
+
 #field-input {
     width: 1fr;
 }

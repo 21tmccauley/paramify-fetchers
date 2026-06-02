@@ -32,6 +32,13 @@ class FormModal(ModalScreen[dict]):
     booleans are always included.
     """
 
+    # Friendlier section headings; the dict key stays the result key.
+    GROUP_LABELS = {
+        "config": "config",
+        "secrets": "secrets  ·  enter the ENV VAR NAME, not the value",
+        "values": "target fields",
+    }
+
     BINDINGS = [
         Binding("escape", "cancel", "Cancel"),
         Binding("ctrl+s", "save", "Save"),
@@ -54,7 +61,7 @@ class FormModal(ModalScreen[dict]):
                     if not fields:
                         continue
                     any_fields = True
-                    yield Label(gname, classes="group-label")
+                    yield Label(self.GROUP_LABELS.get(gname, gname), classes="group-label")
                     for spec in fields:
                         yield FieldRow(spec, group=gname)
                 if not any_fields:

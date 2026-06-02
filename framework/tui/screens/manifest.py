@@ -292,7 +292,9 @@ class ManifestPage(Vertical):
         secret_specs = [
             {
                 "key": s["name"], "label": s["name"], "kind": "secret",
-                "value": env_name_from_ref(secs.get(s["name"])),
+                # Prefill with the current reference if set, else the fetcher's
+                # suggested env var name (the documented default).
+                "value": env_name_from_ref(secs.get(s["name"])) or (s.get("env") or ""),
                 "placeholder": s.get("env") or "", "required": True, "help": "",
             }
             for s in d.get("secrets", []) if not s.get("per_target")
@@ -310,7 +312,12 @@ class ManifestPage(Vertical):
             self.notify(f"Updated {use}.")
 
         self.app.push_screen(
-            FormModal(f"Edit {use}", groups, subtitle="config values + secret env-var names"), done
+            FormModal(
+                f"Edit {use}",
+                groups,
+                subtitle="Secret fields take the env var NAME (e.g. KNOWBE4_API_KEY), not the credential.",
+            ),
+            done,
         )
 
     def action_add_target(self) -> None:
