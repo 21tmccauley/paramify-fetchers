@@ -1,8 +1,8 @@
 # TUI design — a terminal front-end for paramify-fetchers
 
-Status: **Phases 1–3 implemented** (`framework/tui/`: catalog browser, manifest
-editor, run console). Phase 4 (evidence browser + polish) is designed here but
-not yet built.
+Status: **Phases 1–4 implemented** (`framework/tui/`: catalog browser, manifest
+editor, run console, evidence browser). Remaining: the optional polish from
+Phase 4 (Jump Mode, command palette, themes) is not yet built.
 
 This document describes a Textual-based terminal UI for the framework, modeled
 on the architecture of the [Bagels](https://github.com/EnhancedJax/Bagels)
@@ -169,14 +169,17 @@ offering one would mislead. State machine per row:
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.4 Evidence browser  *(Phase 4)*
+### 3.4 Evidence browser  *(Phase 4, implemented)*
 
-A `DataTable` listing produced evidence files under `<output_dir>/run-*/`,
-reading the envelope shape (`framework/envelope.py`: `metadata.fetcher_name`,
-`schema_version`, `metadata.status` / `exit_code`, `evidence_set`). A run picker
-lists `run-*` dirs and re-opens `_run_metadata.json` — a run-history feature the
-web UI lacks. Note: there is **no `api` function for evidence browsing today**
-(see §7).
+Two `DataTable`s: a **runs** picker (newest first — `run_id`, completed time, ok/
+fail counts) and, for the selected run, its **output files** joined with their
+invocation records (`fetcher`, `target`, exit code). Enter on a file opens a
+detail modal showing the enveloped evidence — `metadata` (fetcher, status/exit,
+`evidence_set` reference/name/instructions) + pretty-printed `payload` — or the
+raw content for legacy/un-enveloped files. This is backed by **two new facade
+functions** (see §6/§7): `api.list_runs(output_dir)` and `api.read_evidence(path)`,
+so the TUI stays purely on `framework.api`. It's also a run-history view the web
+UI lacks (re-lists on each visit, so a just-finished run shows up).
 
 ## 4. Data flow
 
@@ -229,14 +232,12 @@ framework/tui/
 ├── screens/
 │   ├── catalog.py         # CatalogPage   — api.catalog(root)            (Phase 1)
 │   ├── manifest.py        # ManifestPage  — api mutators + validate      (Phase 2)
-│   ├── placeholder.py     # PlaceholderPage — "coming in Phase N"        (Phase 1)
 │   ├── run.py             # RunPage       — api.run(on_event=...)         (Phase 3)
-│   └── evidence.py        # EvidencePage  — run-*/ envelope files         (Phase 4)
-├── components/            # reusable widgets (REIMPLEMENTED, not copied — see §6)
-│   ├── forms.py           # FieldRow (switch on kind+type) + env_name_from_ref (Phase 2)
-│   ├── jumper.py          # id->key map + JumpOverlay                      (Phase 4)
-│   └── status_table.py    # run status DataTable wrapper                   (Phase 3)
-├── provider.py            # command palette → cross-cutting api.* actions  (Phase 4)
+│   └── evidence.py        # EvidencePage  — api.list_runs/read_evidence  (Phase 4)
+├── components/
+│   └── forms.py           # FieldRow (switch on kind+type) + env_name_from_ref (Phase 2)
+├── jumper.py              # (not yet built) Jump Mode overlay              (polish)
+├── provider.py            # (not yet built) command palette                (polish)
 └── styles/
     └── index.tcss
 ```
@@ -269,12 +270,13 @@ documented in comments, never derived source.
   matching the existing helpers, keeping the TUI purely on the facade. (Worth
   mirroring into the `manifest` CLI subcommands later for parity; not required by
   the TUI.)
-- **No evidence-browsing API and no cancel hook.** Phase 3 requires **zero
-  `framework.api` changes**. Evidence browsing (Phase 4) either reads run dirs
-  directly (a presentation concern) or motivates two small additive functions
-  (`api.list_runs` / `api.read_evidence`) to stay on the facade. A "stop" button
-  can `worker.cancel()` future entries but cannot kill an in-flight subprocess
-  without an executor change — do **not** promise a hard cancel in v1.
+- **Evidence-browsing API (added) and no cancel hook.** Phase 4 took the
+  facade-consistent route: two small additive functions, `api.list_runs(output_dir)`
+  (summaries from each `run-*/_run_metadata.json` joined with output files) and
+  `api.read_evidence(path)` (normalizes the envelope vs. a raw/legacy file), so
+  the Evidence page never reads run dirs directly. Still no cancel hook — a "stop"
+  button can `worker.cancel()` future entries but cannot kill an in-flight
+  subprocess without an executor change — do **not** promise a hard cancel in v1.
 - **`logger.py` / `retry.py` / `dependency_graph.py` are empty stubs** — no
   retries, no comparator `depends_on` DAG. Don't build retry/progress-bar UI.
 - **Whole-manifest validation, not per-field.** `api.validate` returns strings
@@ -293,6 +295,14 @@ documented in comments, never derived source.
 - **Bagels features that don't apply:** all plotting, budgets, the spinning
   donut, the finance modules, and the entire `models/` + SQLite layer. There is
   no DB — that's a simplification, not a gap.
+- **Deferred — exit 255 not a distinct run status.** The run console maps
+  exit 0→OK, 124→TIMEOUT, non-zero→FAILED, and `fetcher_error`→ERROR
+  (FAILED = ran and returned non-zero; ERROR = never ran). The framework
+  synthesizes **exit 255** for a *per-target setup failure* in a fanout fetcher
+  (e.g. a missing secret) — the same cause that is an ERROR for a single-target
+  fetcher. Today 255 shows in the run *log* (labeled `setup-error`) but folds
+  into FAILED in the status column. A small follow-up could give it a distinct
+  `SETUP-ERR` status.
 
 ## 8. Phased implementation plan
 
@@ -315,6 +325,7 @@ optional Phase 4 evidence additions).
    run-anyway confirm), `run(on_event=...)`. Renders `124`→TIMEOUT,
    `255`→SETUP-ERROR, fanout as `k/N ok`; validate-before-run and
    disable-while-running guards; no stop button (no cancel hook in `api`).
-4. **Evidence browser + polish** (~3–5 days) — run history, Jump Mode, command
-   palette, themes. Reads the envelope / `_run_metadata.json` shape, or adds the
-   two `api` functions above to stay on the facade.
+4. **Evidence browser** *(done)* — runs picker + per-run output files + a detail
+   modal (enveloped metadata/evidence_set/payload, or raw for legacy files), a
+   run-history view the web UI lacks. Added `api.list_runs` / `api.read_evidence`
+   to stay on the facade. *Polish still to do:* Jump Mode, command palette, themes.

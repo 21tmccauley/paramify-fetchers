@@ -115,6 +115,44 @@ RunPage {
     padding: 0 1;
 }
 
+/* Evidence browser */
+EvidencePage {
+    height: 1fr;
+}
+
+#evidence-top {
+    height: auto;
+    padding: 1 1 0 1;
+    align: left middle;
+}
+
+#evidence-dir {
+    width: 1fr;
+    padding-top: 1;
+}
+
+#evidence-body {
+    height: 1fr;
+}
+
+#evidence-left {
+    width: 38%;
+    border-right: solid $panel;
+}
+
+#evidence-right {
+    width: 1fr;
+}
+
+.pane-label {
+    padding: 0 1;
+    text-style: bold;
+}
+
+#evidence-runs, #evidence-files {
+    height: 1fr;
+}
+
 /* Modals */
 ModalScreen {
     align: center middle;

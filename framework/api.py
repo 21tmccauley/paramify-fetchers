@@ -26,7 +26,7 @@ import yaml
 
 from framework.config_loader import discover_fetchers, discover_platforms
 from framework.contract import ConfigField, Secret, TargetField
-from framework.envelope import wrap_outputs
+from framework.envelope import is_enveloped, wrap_outputs
 from framework.runner import manifest_loader
 
 _STDERR_TAIL_CHARS = 4000
@@ -446,3 +446,98 @@ def run(
     }
     emit({"event": "run_complete", **summary})
     return summary
+
+
+# --------------------------------------------------------------------------- #
+# Evidence — read produced run outputs (powers the TUI evidence browser)
+# --------------------------------------------------------------------------- #
+
+def _run_summary(run_dir: Path) -> dict:
+    """Summarize one run-* directory from its _run_metadata.json + output files."""
+    started = completed = None
+    invocations: list = []
+    meta_path = run_dir / "_run_metadata.json"
+    complete = meta_path.exists()
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text())
+            started = meta.get("started_at")
+            completed = meta.get("completed_at")
+            invocations = meta.get("invocations") or []
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    files: list = []
+    seen = set()
+    for inv in invocations:
+        for name in inv.get("outputs") or []:
+            seen.add(name)
+            files.append({
+                "name": name,
+                "path": str(run_dir / name),
+                "fetcher": inv.get("fetcher_name"),
+                "target": inv.get("target"),
+                "exit_code": inv.get("exit_code"),
+            })
+    # Any JSON outputs not recorded in the metadata (e.g. legacy/direct runs).
+    for p in sorted(run_dir.glob("*.json")):
+        if p.name == "_run_metadata.json" or p.name in seen:
+            continue
+        files.append({"name": p.name, "path": str(p), "fetcher": None, "target": None, "exit_code": None})
+    files.sort(key=lambda f: f["name"])
+
+    name = run_dir.name
+    return {
+        "run_id": name[len("run-"):] if name.startswith("run-") else name,
+        "dir": str(run_dir),
+        "started_at": started,
+        "completed_at": completed,
+        "complete": complete,  # False = no _run_metadata.json (run aborted before finishing)
+        "ok": sum(1 for i in invocations if i.get("exit_code") == 0),
+        "fail": sum(1 for i in invocations if i.get("exit_code") not in (0, None)),
+        "files": files,
+    }
+
+
+def list_runs(output_dir) -> List[dict]:
+    """List runs under output_dir, newest first. Each entry summarizes one run-*
+    directory (run_id, timing, complete flag, ok/fail counts, and a per-output-file
+    list joined with its invocation record). Returns [] if the dir is missing.
+
+    A run-* dir with neither metadata nor output files (an aborted run that wrote
+    nothing) is skipped so it doesn't masquerade as a clean empty run; a dir with
+    files but no metadata is kept but flagged complete=False."""
+    base = Path(output_dir).expanduser()
+    if not base.is_absolute():
+        base = Path.cwd() / base
+    base = base.resolve()
+    if not base.is_dir():
+        return []
+    runs = []
+    for d in sorted(base.glob("run-*"), reverse=True):
+        if not d.is_dir():
+            continue
+        summary = _run_summary(d)
+        if not summary["complete"] and not summary["files"]:
+            continue  # pure ghost: nothing was written
+        runs.append(summary)
+    return runs
+
+
+def read_evidence(path) -> dict:
+    """Read one evidence JSON file, normalized. Splits the standard envelope
+    (schema_version/metadata/payload); a raw (un-enveloped) file comes back with
+    metadata={} and the whole object as payload. Raises ValueError if unreadable."""
+    p = Path(path)
+    try:
+        raw = json.loads(p.read_text())
+    except (OSError, json.JSONDecodeError) as e:
+        raise ValueError(f"cannot read evidence file {p}: {e}")
+    if is_enveloped(raw):
+        return {
+            "enveloped": True,
+            "schema_version": raw.get("schema_version"),
+            "metadata": raw.get("metadata") or {},
+            "payload": raw.get("payload"),
+        }
+    return {"enveloped": False, "schema_version": None, "metadata": {}, "payload": raw}

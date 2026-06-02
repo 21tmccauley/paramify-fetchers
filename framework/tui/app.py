@@ -1,8 +1,8 @@
 """FetcherApp — the TUI shell.
 
 Holds the shared state every page reads (repo root, the cached catalog, the
-manifest path) and hosts the four top-level tabs. Only the Catalog tab is live
-in Phase 1; the rest are placeholders (see docs/tui_design.md).
+manifest dict + path) and hosts the four top-level tabs: Catalog, Manifest, Run,
+and Evidence (see docs/tui_design.md).
 
 Like the other front-ends, this talks only to framework.api.
 """
@@ -18,8 +18,8 @@ from textual.widgets import Footer, Header, TabbedContent, TabPane
 
 from framework import api
 from framework.tui.screens.catalog import CatalogPage
+from framework.tui.screens.evidence import EvidencePage
 from framework.tui.screens.manifest import ManifestPage
-from framework.tui.screens.placeholder import PlaceholderPage
 from framework.tui.screens.run import RunPage
 
 
@@ -63,7 +63,7 @@ class FetcherApp(App):
             with TabPane("Run", id="tab-run"):
                 yield RunPage(id="run-page")
             with TabPane("Evidence", id="tab-evidence"):
-                yield PlaceholderPage("Evidence browser", "Phase 4")
+                yield EvidencePage(id="evidence-page")
         yield Footer()
 
     def on_mount(self) -> None:
