@@ -1,0 +1,36 @@
+/* TUI styles. Layout only — colors come from the active Textual theme. */
+
+TabbedContent {
+    height: 1fr;
+}
+
+/* Catalog page: tree on the left, contract detail on the right. */
+CatalogPage {
+    height: 1fr;
+}
+
+#catalog-left {
+    width: 40%;
+    min-width: 32;
+    border-right: solid $panel;
+}
+
+#catalog-search {
+    margin: 1 1 0 1;
+}
+
+#catalog-tree {
+    height: 1fr;
+    padding: 0 1;
+}
+
+#catalog-detail-scroll {
+    width: 1fr;
+    padding: 1 2;
+}
+
+/* Placeholder pages (Phases 2-4). */
+.placeholder-text {
+    width: auto;
+    text-align: center;
+}
