@@ -1,7 +1,8 @@
 # TUI design — a terminal front-end for paramify-fetchers
 
-Status: **Phases 1–2 implemented** (`framework/tui/`: catalog browser + manifest
-editor). Phases 3–4 are designed here but not yet built.
+Status: **Phases 1–3 implemented** (`framework/tui/`: catalog browser, manifest
+editor, run console). Phase 4 (evidence browser + polish) is designed here but
+not yet built.
 
 This document describes a Textual-based terminal UI for the framework, modeled
 on the architecture of the [Bagels](https://github.com/EnhancedJax/Bagels)
@@ -131,11 +132,19 @@ reported but semantically-incomplete WIP can still be saved.
 └──[a]dd  [s]ave  [v]alidate  [r]un ──────────────────────────────────────────────┘
 ```
 
-### 3.3 Run console — `api.run(on_event=...)` on a Textual worker  *(Phase 3)*
+### 3.3 Run console — `api.run(on_event=...)` on a Textual worker  *(Phase 3, implemented)*
 
-A status `DataTable` (one row per `(fetcher, target)` unit) plus a streaming
-`RichLog`, driven by the seven events on a `@work(thread=True)` worker. State
-machine per row:
+A status `DataTable` (**one row per fetcher**, with fanout progress summarized in
+an info column — `3/5 ok · 2 failed` — rather than per-target sub-rows, which keeps
+the table stable since target identities only arrive with each `fetcher_result`),
+plus a streaming `RichLog` that logs each stdout line *and* a per-target result
+line, and a pass/fail/skip summary bar. Driven by the seven events on a
+`@work(thread=True)` worker; the worker posts each event as a Textual message and
+the UI-thread handler (`_handle_event`, kept worker-free so it's unit-testable)
+applies it. Runs are gated on `api.validate()` (a confirm lets you run anyway) and
+the Run control is disabled while a run is in flight. There is **no stop button** —
+`api.run` has no cancel hook (the per-invocation 124 timeout is the only abort), so
+offering one would mislead. State machine per row:
 
 | event | effect |
 |---|---|
@@ -301,9 +310,11 @@ optional Phase 4 evidence additions).
    `set_output_dir`, `validate`, `dump_manifest`. (Platform-config editing
    — `set_platform_config` / `set_passthrough_env` — is deferred to a follow-up;
    most categories' platform config is optional or has defaults.)
-3. **Run console** (~3–5 days) — status table + streaming log on a Textual
-   worker. `api`: `validate` (gate), `run(on_event=...)`. Render `124`→TIMEOUT;
-   reuse the web client's validate-before-run / disable-while-running guards.
+3. **Run console** *(done)* — per-fetcher status table + streaming log + pass/
+   fail/skip summary on a Textual worker. `api`: `validate` (gate, with a
+   run-anyway confirm), `run(on_event=...)`. Renders `124`→TIMEOUT,
+   `255`→SETUP-ERROR, fanout as `k/N ok`; validate-before-run and
+   disable-while-running guards; no stop button (no cancel hook in `api`).
 4. **Evidence browser + polish** (~3–5 days) — run history, Jump Mode, command
    palette, themes. Reads the envelope / `_run_metadata.json` shape, or adds the
    two `api` functions above to stay on the facade.

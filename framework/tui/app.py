@@ -20,6 +20,7 @@ from framework import api
 from framework.tui.screens.catalog import CatalogPage
 from framework.tui.screens.manifest import ManifestPage
 from framework.tui.screens.placeholder import PlaceholderPage
+from framework.tui.screens.run import RunPage
 
 
 class FetcherApp(App):
@@ -60,7 +61,7 @@ class FetcherApp(App):
             with TabPane("Manifest", id="tab-manifest"):
                 yield ManifestPage(id="manifest-page")
             with TabPane("Run", id="tab-run"):
-                yield PlaceholderPage("Run console", "Phase 3")
+                yield RunPage(id="run-page")
             with TabPane("Evidence", id="tab-evidence"):
                 yield PlaceholderPage("Evidence browser", "Phase 4")
         yield Footer()

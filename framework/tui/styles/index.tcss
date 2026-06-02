@@ -79,6 +79,42 @@ ManifestPage {
     padding: 0 1;
 }
 
+/* Run console */
+RunPage {
+    height: 1fr;
+}
+
+#run-top {
+    height: auto;
+    padding: 1 1 0 1;
+    align: left middle;
+}
+
+#run-banner {
+    width: 1fr;
+    padding: 1 0 0 2;
+}
+
+#run-body {
+    height: 1fr;
+}
+
+#run-status {
+    width: 50%;
+}
+
+#run-log {
+    width: 1fr;
+    border-left: solid $panel;
+    padding: 0 1;
+}
+
+#run-summary {
+    height: auto;
+    border-top: solid $panel;
+    padding: 0 1;
+}
+
 /* Modals */
 ModalScreen {
     align: center middle;
