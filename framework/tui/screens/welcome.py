@@ -11,6 +11,7 @@ notifies — it is NOT wired into the app flow yet. Run it with:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import List, Optional
 
 from rich.text import Text
@@ -20,6 +21,9 @@ from textual.containers import Container, Vertical
 from textual.message import Message
 from textual.screen import Screen
 from textual.widgets import DataTable, Static
+
+from framework import api
+from framework.tui.modals import ConfirmModal, FormModal
 
 # PARAMIFY block logo (from the Go prototype's app.LogoLines()).
 LOGO = r"""
@@ -41,24 +45,24 @@ _SHEEN_CORE = "#C0CAF5"   # bright center of the band
 _SHEEN_PEAK = "#7DCFFF"   # cyan, just off-center
 _SHEEN_BASE = "#7AA2F7"   # the logo's resting blue
 
-# Sample manifests — stand in for what api.list_manifests() would return.
+# Sample manifests for the standalone demo — same shape as api.list_manifests().
 MOCK_MANIFESTS: List[dict] = [
-    {"name": "aws-prod.yaml", "fetchers": 12, "issues": 0,
-     "last_run": "2026-06-02", "last_result": "11/12 ok"},
-    {"name": "okta-quarterly.yaml", "fetchers": 8, "issues": 2,
-     "last_run": "2026-05-30", "last_result": "8/8 ok"},
-    {"name": "k8s-baseline.yaml", "fetchers": 3, "issues": 0,
-     "last_run": None, "last_result": None},
-    {"name": "gitlab-change-mgmt.yaml", "fetchers": 2, "issues": 0,
-     "last_run": "2026-05-27", "last_result": "0/2 ok"},
+    {"name": "aws-prod.yaml", "path": "manifests/aws-prod.yaml", "fetcher_count": 12,
+     "issues": 0, "runnable": True, "readable": True, "last_run": "2026-06-02", "last_result": "11/12 ok"},
+    {"name": "okta-quarterly.yaml", "path": "manifests/okta-quarterly.yaml", "fetcher_count": 8,
+     "issues": 2, "runnable": False, "readable": True, "last_run": "2026-05-30", "last_result": "8/8 ok"},
+    {"name": "k8s-baseline.yaml", "path": "manifests/k8s-baseline.yaml", "fetcher_count": 3,
+     "issues": 0, "runnable": True, "readable": True, "last_run": None, "last_result": None},
+    {"name": "gitlab-change-mgmt.yaml", "path": "manifests/gitlab-change-mgmt.yaml", "fetcher_count": 2,
+     "issues": 0, "runnable": True, "readable": True, "last_run": "2026-05-27", "last_result": "0/2 ok"},
 ]
 
 
 class ManifestSelected(Message):
-    """Emitted when a manifest is chosen (for later wiring into the app)."""
+    """Emitted when a manifest is chosen on the welcome screen (carries its path)."""
 
-    def __init__(self, name: str) -> None:
-        self.name = name
+    def __init__(self, path: str) -> None:
+        self.path = path
         super().__init__()
 
 
@@ -103,7 +107,7 @@ class WelcomeScreen(Screen):
 
     def __init__(self, manifests: Optional[List[dict]] = None) -> None:
         super().__init__()
-        self._manifests = manifests if manifests is not None else MOCK_MANIFESTS
+        self._manifests = manifests  # None -> fetched live via api.list_manifests in on_mount
         self.last_selected: Optional[str] = None
         # shimmer state
         self._sheen_col = -_SHEEN_RADIUS
@@ -125,13 +129,19 @@ class WelcomeScreen(Screen):
         dt = self.query_one("#welcome-manifests", DataTable)
         dt.cursor_type = "row"
         dt.add_columns("manifest", "fetchers", "status", "last run")
+        if self._manifests is None:
+            self._manifests = api.list_manifests(self.app.root_path) if self.app.root_path else []
         for m in self._manifests:
             dt.add_row(
                 Text(m["name"], style="#7DCFFF"),
-                Text(str(m["fetchers"]), style="#BB9AF7"),
+                Text(str(m["fetcher_count"]), style="#BB9AF7"),
                 self._status_cell(m),
                 self._last_run_cell(m),
-                key=m["name"],
+                key=m["path"],
+            )
+        if not self._manifests:
+            self.query_one("#welcome-panel-title", Static).update(
+                "no manifests yet — add one under manifests/ or press n"
             )
         dt.focus()
         self._update_logo()
@@ -181,23 +191,27 @@ class WelcomeScreen(Screen):
 
     @staticmethod
     def _status_cell(m: dict) -> Text:
-        if m["issues"]:
-            return Text(f"⚠ {m['issues']} issues", style="#E0AF68")
+        if not m.get("readable", True):
+            return Text("✗ unreadable", style="#F7768E")
+        issues = m.get("issues")
+        if issues is None:
+            return Text("· unknown", style="#565F89")
+        if issues:
+            return Text(f"⚠ {issues} issues", style="#E0AF68")
         return Text("✓ runnable", style="#9ECE6A")
 
     @staticmethod
     def _last_run_cell(m: dict) -> Text:
-        if not m["last_run"]:
+        if not m.get("last_run"):
             return Text("— never run", style="#565F89")
         result = m.get("last_result") or ""
-        ok = result.startswith(result.split("/")[0]) and "0/" not in result
-        style = "#9ECE6A" if ok and "ok" in result else "#F7768E"
+        style = "#F7768E" if result.startswith("0/") else "#9ECE6A"
         t = Text(f"{m['last_run']}  ", style="#565F89")
         t.append(result, style=style)
         return t
 
     def _hints(self) -> Text:
-        parts = [("enter", "open"), ("n", "new"), ("d", "delete"), ("s", "secrets"), ("q", "quit")]
+        parts = [("enter", "open"), ("n", "new"), ("d", "delete"), ("q", "quit")]
         t = Text()
         for i, (key, desc) in enumerate(parts):
             if i:
@@ -216,12 +230,10 @@ class WelcomeScreen(Screen):
         row_key, _ = dt.coordinate_to_cell_key(dt.cursor_coordinate)
         return row_key.value
 
-    def _open(self, name: Optional[str]) -> None:
-        if not name:
-            return
-        self.last_selected = name
-        self.post_message(ManifestSelected(name))
-        self.notify(f"[mock] would open '{name}' and drive the session from it.")
+    def _open(self, path: Optional[str]) -> None:
+        if path:
+            self.last_selected = path
+            self.post_message(ManifestSelected(path))  # app -> enter workspace
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         # Enter on the focused table posts RowSelected (it shadows the screen's
@@ -232,9 +244,60 @@ class WelcomeScreen(Screen):
         self._open(self._selected())
 
     def action_new(self) -> None:
-        self.notify("[mock] would create a new manifest (api.init_manifest).")
+        def done(result: Optional[dict]) -> None:
+            name = (result or {}).get("new manifest", {}).get("name")
+            if not name:
+                return
+            try:
+                path = api.new_manifest_path(self.app.root_path, name)
+            except FileExistsError:
+                self.notify(f"{name} already exists.", severity="warning")
+                return
+            except (ValueError, OSError) as exc:
+                self.notify(f"Could not create manifest: {exc}", severity="error")
+                return
+            self.post_message(ManifestSelected(str(path)))  # open the new one
+
+        self.app.push_screen(
+            FormModal(
+                "New manifest",
+                {"new manifest": [{
+                    "key": "name", "label": "file name", "kind": "text",
+                    "placeholder": "e.g. aws-prod", "required": True,
+                    "help": "created empty under manifests/",
+                }]},
+                subtitle="Create a manifest and start editing it",
+            ),
+            done,
+        )
 
     def action_delete(self) -> None:
-        name = self._selected()
-        if name:
-            self.notify(f"[mock] would delete '{name}' (after confirm).")
+        path = self._selected()
+        if not path:
+            return
+
+        def done(ok: bool) -> None:
+            if not ok:
+                return
+            try:
+                Path(path).unlink()
+            except OSError as exc:
+                self.notify(f"Could not delete: {exc}", severity="error")
+                return
+            self.notify(f"Deleted {Path(path).name}.")
+            self._reload_table()
+
+        self.app.push_screen(ConfirmModal(f"Delete '{Path(path).name}' (the file on disk)?"), done)
+
+    def _reload_table(self) -> None:
+        self._manifests = api.list_manifests(self.app.root_path) if self.app.root_path else []
+        dt = self.query_one("#welcome-manifests", DataTable)
+        dt.clear()
+        for m in self._manifests:
+            dt.add_row(
+                Text(m["name"], style="#7DCFFF"),
+                Text(str(m["fetcher_count"]), style="#BB9AF7"),
+                self._status_cell(m),
+                self._last_run_cell(m),
+                key=m["path"],
+            )

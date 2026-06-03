@@ -14,8 +14,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--manifest",
-        default="manifest.yaml",
-        help="path to the manifest to edit (default: ./manifest.yaml)",
+        default=None,
+        help="manifest to open directly, skipping the welcome screen "
+        "(default: show the welcome / manifest picker)",
     )
     parser.add_argument(
         "--at",

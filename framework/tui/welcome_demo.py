@@ -9,12 +9,13 @@ full multi-manifest design. See docs/tui_design.md (Phase 5 proposal).
 
 from textual.app import App
 
-from framework.tui.screens.welcome import WelcomeScreen
+from framework.tui.screens.welcome import MOCK_MANIFESTS, WelcomeScreen
 
 
 class WelcomeDemo(App):
     def on_mount(self) -> None:
-        self.push_screen(WelcomeScreen())
+        self.theme = "tokyo-night"
+        self.push_screen(WelcomeScreen(MOCK_MANIFESTS))
 
 
 def main() -> None:
