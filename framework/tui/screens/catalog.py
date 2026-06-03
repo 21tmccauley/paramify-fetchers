@@ -93,10 +93,20 @@ class CatalogPage(Horizontal):
         (right if on_left else tree).focus()
 
     def action_tree_down(self) -> None:
-        self.query_one("#catalog-tree", Tree).action_cursor_down()
+        self._nav(down=True)
 
     def action_tree_up(self) -> None:
-        self.query_one("#catalog-tree", Tree).action_cursor_up()
+        self._nav(down=False)
+
+    def _nav(self, down: bool) -> None:
+        # j/k drive whatever pane is focused: scroll the detail when it holds
+        # focus, otherwise move the tree cursor (matches the arrow-key routing).
+        right = self.query_one("#catalog-detail-scroll", VerticalScroll)
+        if right.has_focus:
+            right.action_scroll_down() if down else right.action_scroll_up()
+        else:
+            tree = self.query_one("#catalog-tree", Tree)
+            tree.action_cursor_down() if down else tree.action_cursor_up()
 
     # -- helpers ---------------------------------------------------------- #
 
