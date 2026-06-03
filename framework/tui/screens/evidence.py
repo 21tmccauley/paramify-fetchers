@@ -34,11 +34,11 @@ class EvidencePage(Vertical):
             yield Static("", id="evidence-dir")
             yield Button("Refresh", id="evidence-refresh")
         with Horizontal(id="evidence-body"):
-            with Vertical(id="evidence-left"):
-                yield Static("runs", classes="pane-label")
+            with Vertical(id="evidence-left", classes="panel"):
+                yield Static("runs", classes="panel-title")
                 yield DataTable(id="evidence-runs")
-            with Vertical(id="evidence-right"):
-                yield Static("", id="evidence-run-header", classes="pane-label")
+            with Vertical(id="evidence-right", classes="panel"):
+                yield Static("", id="evidence-run-header", classes="panel-title")
                 yield DataTable(id="evidence-files")
 
     def on_mount(self) -> None:

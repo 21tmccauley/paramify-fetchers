@@ -63,8 +63,12 @@ class RunPage(Vertical):
             yield Button("▶ Run", variant="primary", id="btn-run")
             yield Static("", id="run-banner")
         with Horizontal(id="run-body"):
-            yield DataTable(id="run-status")
-            yield RichLog(id="run-log", markup=False, wrap=True, highlight=False)
+            with Vertical(id="run-status-panel", classes="panel"):
+                yield Static("status", classes="panel-title")
+                yield DataTable(id="run-status")
+            with Vertical(id="run-log-panel", classes="panel"):
+                yield Static("log", classes="panel-title")
+                yield RichLog(id="run-log", markup=False, wrap=True, highlight=False)
         yield Static("", id="run-summary")
 
     def on_mount(self) -> None:

@@ -73,16 +73,15 @@ ManifestPage {
 
 #manifest-body {
     height: 1fr;
+    padding: 1 1 0 1;
 }
 
-#manifest-entries {
-    width: 55%;
-}
+#manifest-entries-panel { width: 55%; }
+#manifest-entries { height: 1fr; }
 
 #manifest-detail-scroll {
     width: 1fr;
-    border-left: solid $panel;
-    padding: 0 1;
+    margin-left: 1;
 }
 
 #manifest-issues {
@@ -109,17 +108,12 @@ RunPage {
 
 #run-body {
     height: 1fr;
+    padding: 1 1 0 1;
 }
 
-#run-status {
-    width: 50%;
-}
-
-#run-log {
-    width: 1fr;
-    border-left: solid $panel;
-    padding: 0 1;
-}
+#run-status-panel { width: 50%; }
+#run-log-panel { width: 1fr; margin-left: 1; }
+#run-status, #run-log { height: 1fr; }
 
 #run-summary {
     height: auto;
@@ -145,25 +139,13 @@ EvidencePage {
 
 #evidence-body {
     height: 1fr;
+    padding: 1 1 0 1;
 }
 
-#evidence-left {
-    width: 38%;
-    border-right: solid $panel;
-}
+#evidence-left { width: 38%; }
+#evidence-right { width: 1fr; margin-left: 1; }
 
-#evidence-right {
-    width: 1fr;
-}
-
-.pane-label {
-    padding: 0 1;
-    text-style: bold;
-}
-
-#evidence-runs, #evidence-files {
-    height: 1fr;
-}
+#evidence-runs, #evidence-files { height: 1fr; }
 
 /* Modals */
 ModalScreen {

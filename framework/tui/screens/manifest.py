@@ -48,8 +48,11 @@ class ManifestPage(Vertical):
             yield Button("Add fetcher", variant="primary", id="btn-add")
             yield Button("Save", id="btn-save")
         with Horizontal(id="manifest-body"):
-            yield DataTable(id="manifest-entries")
-            with VerticalScroll(id="manifest-detail-scroll"):
+            with Vertical(id="manifest-entries-panel", classes="panel"):
+                yield Static("fetchers", classes="panel-title")
+                yield DataTable(id="manifest-entries")
+            with VerticalScroll(id="manifest-detail-scroll", classes="panel"):
+                yield Static("detail", classes="panel-title")
                 yield Static(render.empty_detail("No fetcher selected."), id="manifest-detail")
         yield Static(id="manifest-issues")
 
