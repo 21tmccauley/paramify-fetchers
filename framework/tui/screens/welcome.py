@@ -102,7 +102,7 @@ class WelcomeScreen(Screen):
         Binding("enter", "open", "open"),
         Binding("n", "new", "new"),
         Binding("d", "delete", "delete"),
-        Binding("q", "quit", "quit"),
+        Binding("q", "app.quit", "quit"),  # app.* — a bare "quit" resolves in the screen namespace (no-op)
     ]
 
     def __init__(self, manifests: Optional[List[dict]] = None) -> None:

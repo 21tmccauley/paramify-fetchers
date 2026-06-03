@@ -38,7 +38,7 @@ class WorkspaceScreen(Screen):
         Binding("escape", "unfocus", "Unfocus", show=False),
         Binding("m", "switch_manifest", "Manifest…"),
         Binding("r", "refresh", "Refresh", show=False),
-        Binding("q", "quit", "Quit"),
+        Binding("q", "app.quit", "Quit"),  # app.* — a bare "quit" resolves in the screen namespace (no-op)
     ]
 
     def compose(self) -> ComposeResult:
