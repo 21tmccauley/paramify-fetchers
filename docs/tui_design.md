@@ -295,6 +295,12 @@ documented in comments, never derived source.
 - **Bagels features that don't apply:** all plotting, budgets, the spinning
   donut, the finance modules, and the entire `models/` + SQLite layer. There is
   no DB — that's a simplification, not a gap.
+- **Deferred — welcome `last run` is per-output-dir, not per-manifest.** The
+  welcome picker's "last run" comes from `api.list_runs(<manifest output_dir>)`.
+  Manifests that share an `output_dir` (e.g. the default `./evidence`) all show
+  the *same* last run, because `_run_metadata.json` doesn't record which manifest
+  produced a run. Proper fix: stamp the manifest name/path into the run metadata
+  and filter `list_runs` by it. Cosmetic for now (a discovery-screen badge).
 - **Deferred — exit 255 not a distinct run status.** The run console maps
   exit 0→OK, 124→TIMEOUT, non-zero→FAILED, and `fetcher_error`→ERROR
   (FAILED = ran and returned non-zero; ERROR = never ran). The framework

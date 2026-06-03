@@ -244,6 +244,10 @@ class WelcomeScreen(Screen):
         self._open(self._selected())
 
     def action_new(self) -> None:
+        if not self.app.root_path:
+            self.notify("Cannot create a manifest: repo root not found.", severity="error")
+            return
+
         def done(result: Optional[dict]) -> None:
             name = (result or {}).get("new manifest", {}).get("name")
             if not name:
@@ -301,3 +305,7 @@ class WelcomeScreen(Screen):
                 self._last_run_cell(m),
                 key=m["path"],
             )
+        self.query_one("#welcome-panel-title", Static).update(
+            "select a run manifest" if self._manifests
+            else "no manifests yet — add one under manifests/ or press n"
+        )

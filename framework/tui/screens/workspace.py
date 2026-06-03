@@ -65,6 +65,7 @@ class WorkspaceScreen(Screen):
             self.query_one(EvidencePage).rebuild_runs()
         except Exception:
             pass
+        self.query_one(RunPage).reset_state()  # clear stale run state (no-op if running)
         self._update_chrome()
 
     # -- chrome / tabs ---------------------------------------------------- #

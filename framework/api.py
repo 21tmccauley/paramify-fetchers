@@ -259,18 +259,22 @@ def set_passthrough_env(m: dict, category: str, env_vars: List[str]) -> dict:
 # on a merely-incomplete manifest)
 # --------------------------------------------------------------------------- #
 
-def validate(manifest: dict, root: Path) -> List[str]:
+def validate(manifest: dict, root: Path, fetchers=None, platforms=None) -> List[str]:
     """Validate a manifest dict against the schema and the discovered fetchers.
 
     Returns a list of human-readable error strings (empty == valid+runnable).
-    Mirrors the checks the runner enforces before executing.
+    Mirrors the checks the runner enforces before executing. `fetchers`/`platforms`
+    may be passed pre-discovered (e.g. when validating many manifests in a loop)
+    to avoid re-scanning the fetcher tree each call.
     """
     errors = manifest_loader.schema_errors(manifest, root)
     if errors:
         return errors  # can't do semantic checks on a structurally-broken manifest
 
-    fetchers = discover_fetchers(root)
-    platforms = discover_platforms(root)
+    if fetchers is None:
+        fetchers = discover_fetchers(root)
+    if platforms is None:
+        platforms = discover_platforms(root)
     parsed = manifest_loader.parse_manifest(manifest)
 
     for i, entry in enumerate(parsed.entries):
@@ -547,7 +551,9 @@ def read_evidence(path) -> dict:
 # Manifests — discover selectable run manifests (powers the welcome screen)
 # --------------------------------------------------------------------------- #
 
-def _manifest_summary(path: Path, root: Path) -> dict:
+def _manifest_summary(path: Path, root: Path, fetchers=None, platforms=None) -> Optional[dict]:
+    """Summarize a manifest file, or return None if it isn't a run manifest
+    (its top level must be a mapping with a `run` key)."""
     summary = {
         "name": path.name,
         "path": str(path),
@@ -559,19 +565,24 @@ def _manifest_summary(path: Path, root: Path) -> dict:
         "readable": True,
     }
     try:
-        m = read_manifest(path)
-    except Exception:
+        raw = yaml.safe_load(path.read_text())
+    except (OSError, yaml.YAMLError):
         summary["readable"] = False
         return summary
-    run = m.get("run") or {}
+    if not isinstance(raw, dict) or "run" not in raw:
+        return None  # a stray / non-manifest YAML file — don't offer it as a manifest
+    run = raw.get("run") or {}
     summary["fetcher_count"] = len(run.get("fetchers") or [])
     try:
-        errors = validate(m, root)
+        errors = validate(raw, root, fetchers, platforms)
         summary["issues"] = len(errors)
         summary["runnable"] = not errors
     except Exception:
         pass
     try:
+        # NOTE: last_run is read from the manifest's output_dir; manifests that
+        # share an output_dir (e.g. the default ./evidence) will report the same
+        # last run, since run metadata doesn't record which manifest produced it.
         runs = list_runs(run.get("output_dir") or "./evidence")
         if runs:
             last = runs[0]
@@ -586,7 +597,8 @@ def _manifest_summary(path: Path, root: Path) -> dict:
 def list_manifests(root) -> List[dict]:
     """Discover selectable run manifests: <root>/manifests/*.yaml, plus a legacy
     <root>/manifest.yaml if present (listed first). Each is summarized with its
-    fetcher count, validity (issues), and last-run info for the welcome picker."""
+    fetcher count, validity (issues), and last-run info for the welcome picker.
+    Non-manifest YAML files (no top-level `run`) are skipped."""
     root = Path(root)
     paths: List[Path] = []
     mdir = root / "manifests"
@@ -595,7 +607,17 @@ def list_manifests(root) -> List[dict]:
     legacy = root / "manifest.yaml"
     if legacy.exists() and legacy.resolve() not in {p.resolve() for p in paths}:
         paths.insert(0, legacy)
-    return [_manifest_summary(p, root) for p in paths]
+    if not paths:
+        return []
+    # Discover the fetcher tree once and reuse it across every manifest's
+    # validate() — otherwise the welcome screen re-scans all fetchers per file.
+    try:
+        fetchers = discover_fetchers(root)
+        platforms = discover_platforms(root)
+    except Exception:
+        fetchers = platforms = None
+    summaries = [_manifest_summary(p, root, fetchers, platforms) for p in paths]
+    return [s for s in summaries if s is not None]
 
 
 def new_manifest_path(root, name: str, output_dir: str = "./evidence") -> Path:

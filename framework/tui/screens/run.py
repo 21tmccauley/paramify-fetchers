@@ -84,6 +84,18 @@ class RunPage(Vertical):
     def focus_default(self) -> None:
         self.query_one("#btn-run", Button).focus()
 
+    def reset_state(self) -> None:
+        """Clear the console for a freshly-switched manifest. No-op while a run
+        is in flight — that run finishes and clears itself."""
+        if self._running:
+            return
+        self._state = {}
+        self._rows = {}
+        self.query_one("#run-status", DataTable).clear()
+        self.query_one("#run-log", RichLog).clear()
+        self._set_banner(Text("press Ctrl+R (or Run) to execute the manifest", style="dim"))
+        self._refresh_summary()
+
     # -- run control ------------------------------------------------------ #
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
