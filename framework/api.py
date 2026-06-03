@@ -541,3 +541,76 @@ def read_evidence(path) -> dict:
             "payload": raw.get("payload"),
         }
     return {"enveloped": False, "schema_version": None, "metadata": {}, "payload": raw}
+
+
+# --------------------------------------------------------------------------- #
+# Manifests — discover selectable run manifests (powers the welcome screen)
+# --------------------------------------------------------------------------- #
+
+def _manifest_summary(path: Path, root: Path) -> dict:
+    summary = {
+        "name": path.name,
+        "path": str(path),
+        "fetcher_count": 0,
+        "issues": None,          # None = couldn't validate; else int error count
+        "runnable": False,
+        "last_run": None,
+        "last_result": None,
+        "readable": True,
+    }
+    try:
+        m = read_manifest(path)
+    except Exception:
+        summary["readable"] = False
+        return summary
+    run = m.get("run") or {}
+    summary["fetcher_count"] = len(run.get("fetchers") or [])
+    try:
+        errors = validate(m, root)
+        summary["issues"] = len(errors)
+        summary["runnable"] = not errors
+    except Exception:
+        pass
+    try:
+        runs = list_runs(run.get("output_dir") or "./evidence")
+        if runs:
+            last = runs[0]
+            total = last["ok"] + last["fail"]
+            summary["last_run"] = last["run_id"]
+            summary["last_result"] = f"{last['ok']}/{total} ok" if total else None
+    except Exception:
+        pass
+    return summary
+
+
+def list_manifests(root) -> List[dict]:
+    """Discover selectable run manifests: <root>/manifests/*.yaml, plus a legacy
+    <root>/manifest.yaml if present (listed first). Each is summarized with its
+    fetcher count, validity (issues), and last-run info for the welcome picker."""
+    root = Path(root)
+    paths: List[Path] = []
+    mdir = root / "manifests"
+    if mdir.is_dir():
+        paths += sorted(mdir.glob("*.yaml"))
+    legacy = root / "manifest.yaml"
+    if legacy.exists() and legacy.resolve() not in {p.resolve() for p in paths}:
+        paths.insert(0, legacy)
+    return [_manifest_summary(p, root) for p in paths]
+
+
+def new_manifest_path(root, name: str, output_dir: str = "./evidence") -> Path:
+    """Create a fresh manifest file at <root>/manifests/<name>.yaml and return
+    its path. Raises FileExistsError if it already exists, ValueError on a bad
+    name."""
+    safe = name.strip()
+    if not safe or "/" in safe or safe.startswith("."):
+        raise ValueError(f"invalid manifest name: {name!r}")
+    if not safe.endswith(".yaml"):
+        safe += ".yaml"
+    mdir = Path(root) / "manifests"
+    mdir.mkdir(parents=True, exist_ok=True)
+    path = mdir / safe
+    if path.exists():
+        raise FileExistsError(str(path))
+    path.write_text(yaml.safe_dump(init_manifest(output_dir), sort_keys=False))
+    return path
