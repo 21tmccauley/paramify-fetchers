@@ -54,7 +54,7 @@ class RunEvent(Message):
 
 
 class RunPage(Vertical):
-    HINTS = [("ctrl+r", "run"), ("1-4", "tabs"), ("q", "quit")]
+    HINTS = [("ctrl+r", "run")]
 
     BINDINGS = [Binding("ctrl+r", "run_manifest", "Run")]
 

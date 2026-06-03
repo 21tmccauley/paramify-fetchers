@@ -20,7 +20,7 @@ from framework.tui import render
 class CatalogPage(Horizontal):
     """Two-pane fetcher catalog: tree on the left, contract detail on the right."""
 
-    HINTS = [("↑↓/jk", "navigate"), ("/", "filter"), ("tab", "pane"), ("1-4", "tabs"), ("q", "quit")]
+    HINTS = [("↑↓/jk", "navigate"), ("/", "filter"), ("tab", "pane")]
 
     BINDINGS = [
         Binding("tab", "next_pane", "pane", show=False),

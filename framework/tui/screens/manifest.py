@@ -27,7 +27,7 @@ from framework.tui.modals import ConfirmModal, FormModal, PickerModal, PreviewMo
 class ManifestPage(Vertical):
     HINTS = [
         ("a", "add"), ("e", "edit"), ("x", "remove"), ("t", "target"),
-        ("s", "save"), ("v", "validate"), ("p", "preview"), ("q", "quit"),
+        ("s", "save"), ("v", "validate"), ("p", "preview"),
     ]
 
     BINDINGS = [

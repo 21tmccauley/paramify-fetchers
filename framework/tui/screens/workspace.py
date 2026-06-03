@@ -25,6 +25,10 @@ from framework.tui.screens.run import RunPage
 class WorkspaceScreen(Screen):
     TAB_IDS = ["tab-catalog", "tab-manifest", "tab-run", "tab-evidence"]
 
+    # Screen-level bindings shown on every tab's footer (after the page-specific
+    # hints). Keep in sync with BINDINGS below.
+    WORKSPACE_HINTS = [("1-4", "tabs"), ("m", "manifest"), ("q", "quit")]
+
     BINDINGS = [
         Binding("1", "go_tab(0)", "Catalog"),
         Binding("2", "go_tab(1)", "Manifest"),
@@ -73,14 +77,14 @@ class WorkspaceScreen(Screen):
         tab = (tabs.active or "").removeprefix("tab-")
         name = self.app.manifest_path.name if self.app.manifest_path else "?"
         self.query_one(AppHeader).set_crumb(f"{name}  ›  {tab}")
-        hints = []
+        page_hints: list = []
         pane = tabs.active_pane
         if pane is not None:
             for child in pane.walk_children():
                 if getattr(child, "HINTS", None):
-                    hints = child.HINTS
+                    page_hints = list(child.HINTS)
                     break
-        self.query_one(HintFooter).set_hints(hints)
+        self.query_one(HintFooter).set_hints(page_hints + self.WORKSPACE_HINTS)
 
     def _go_to_tab(self, tab_id: str, focus_default: bool = True) -> None:
         self.set_focus(None)  # Textual reverts an active-change while focus is in the outgoing pane
