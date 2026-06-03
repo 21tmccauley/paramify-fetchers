@@ -30,6 +30,16 @@ LOGO = r"""
  ██║     ██║  ██║██║  ██║██║  ██║██║ ╚═╝ ██║██║██║        ██║
  ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝        ╚═╝
 """.strip("\n")
+LOGO_LINES = LOGO.split("\n")
+
+# Logo shimmer — a bright band sweeps left→right, then idles, then repeats
+# (mirrors the Go prototype's app.RenderLogoSheen).
+_SHEEN_STEP = 0.03        # seconds per column advance
+_SHEEN_IDLE = 6.0         # pause between sweeps
+_SHEEN_RADIUS = 10        # the band starts/ends this far off-edge
+_SHEEN_CORE = "#C0CAF5"   # bright center of the band
+_SHEEN_PEAK = "#7DCFFF"   # cyan, just off-center
+_SHEEN_BASE = "#7AA2F7"   # the logo's resting blue
 
 # Sample manifests — stand in for what api.list_manifests() would return.
 MOCK_MANIFESTS: List[dict] = [
@@ -95,6 +105,11 @@ class WelcomeScreen(Screen):
         super().__init__()
         self._manifests = manifests if manifests is not None else MOCK_MANIFESTS
         self.last_selected: Optional[str] = None
+        # shimmer state
+        self._sheen_col = -_SHEEN_RADIUS
+        self._sheen_idle = False
+        self._idle_ticks = 0
+        self._sheen_max = max(len(line) for line in LOGO_LINES)
 
     def compose(self) -> ComposeResult:
         with Vertical(id="welcome-root"):
@@ -119,6 +134,48 @@ class WelcomeScreen(Screen):
                 key=m["name"],
             )
         dt.focus()
+        self._update_logo()
+        self.set_interval(_SHEEN_STEP, self._sheen_tick)
+
+    # -- logo shimmer ----------------------------------------------------- #
+
+    def _render_logo(self, center: int) -> Text:
+        """Style the logo with a bright band centered at column `center`.
+        Consecutive same-color chars are coalesced into one span."""
+        text = Text()
+        for li, line in enumerate(LOGO_LINES):
+            if li:
+                text.append("\n")
+            run: list = []
+            run_color = None
+            for i, ch in enumerate(line):
+                d = abs(i - center)
+                color = _SHEEN_CORE if d <= 1 else _SHEEN_PEAK if d <= 3 else _SHEEN_BASE
+                if run and color != run_color:
+                    text.append("".join(run), style=f"{run_color} bold")
+                    run = []
+                run_color = color
+                run.append(ch)
+            if run:
+                text.append("".join(run), style=f"{run_color} bold")
+        return text
+
+    def _update_logo(self) -> None:
+        self.query_one("#welcome-logo", Static).update(self._render_logo(self._sheen_col))
+
+    def _sheen_tick(self) -> None:
+        if self._sheen_idle:
+            self._idle_ticks -= 1
+            if self._idle_ticks <= 0:           # resume: restart the sweep
+                self._sheen_idle = False
+                self._sheen_col = -_SHEEN_RADIUS
+            return
+        self._sheen_col += 1
+        if self._sheen_col > self._sheen_max + _SHEEN_RADIUS:
+            self._sheen_idle = True              # band has swept past the end; rest
+            self._idle_ticks = int(_SHEEN_IDLE / _SHEEN_STEP)
+            return
+        self._update_logo()
 
     # -- cells ------------------------------------------------------------ #
 
