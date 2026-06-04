@@ -1,0 +1,8 @@
+# Default Skip Checks - Low Severity Checks (Terraform)
+# This file contains a starting set of low-severity checks that are usually skipped.
+# Users add more via CHECKOV_SKIP_CHECKS (config); the two lists are merged.
+# Format: one Checkov check ID per line. Lines starting with # are comments.
+
+# Example entries (uncomment and customize as needed):
+# CKV_AWS_250
+# CKV_AWS_144
