@@ -1,0 +1,15 @@
+description: >
+  Checkov IaC security scanners (bash, the `checkov` CLI + git + jq). These are
+  the first "scanner" fetchers: instead of pulling evidence from a vendor API,
+  each fetcher clones a git repo (generic — any host, via a per-target token) and
+  runs `checkov` over its Terraform / Kubernetes source, emitting the scan result
+  as JSON evidence. Single repo per invocation; the runner fans out across repos.
+
+# No ambient cloud-identity passthrough is needed: acquisition is an explicit
+# `git clone` authenticated with the per-target GIT_CLONE_TOKEN secret, not an
+# instance role. Every other knob is declared per-fetcher in its fetcher.yaml
+# config_schema; a manifest can still set shared values once under
+# platforms.checkov.config (e.g. soft_fail) since both fetchers declare the field.
+#
+# Runner dependency: the `checkov` CLI and `git` must be on PATH. `checkov` is in
+# the top-level requirements.txt; `git` is a system tool.

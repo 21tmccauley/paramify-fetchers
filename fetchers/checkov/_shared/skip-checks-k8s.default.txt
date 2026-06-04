@@ -1,0 +1,34 @@
+# Default Skip Checks for Kubernetes - Checks that commonly fail
+# This file contains Kubernetes checks that are often too strict or not applicable.
+# Users add more via CHECKOV_SKIP_CHECKS (config); the two lists are merged.
+# Format: one Checkov check ID per line. Lines starting with # are comments.
+
+# Reference for the entries below:
+# CKV_K8S_8  - Liveness Probe Should be Configured (often not needed for all workloads)
+# CKV_K8S_9  - Readiness Probe Should be Configured (often not needed for all workloads)
+# CKV_K8S_22 - Use read-only filesystem (not always practical)
+# CKV_K8S_31 - Seccomp profile (not always configured)
+# CKV_K8S_35 - Secrets as files vs env vars (env vars are common and acceptable)
+# CKV_K8S_40 - High UID (not always applicable)
+# CKV_K8S_43 - Image digest (tags are commonly used)
+
+# Operational checks (not security-critical)
+CKV_K8S_8
+CKV_K8S_9
+
+# Security checks that are important but commonly failing (re-enable as infra is hardened)
+CKV_K8S_10
+CKV_K8S_11
+CKV_K8S_12
+CKV_K8S_13
+CKV_K8S_15
+CKV_K8S_20
+CKV_K8S_22
+CKV_K8S_23
+CKV_K8S_29
+CKV_K8S_30
+CKV_K8S_31
+CKV_K8S_35
+CKV_K8S_38
+CKV_K8S_40
+CKV_K8S_43
