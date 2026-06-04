@@ -350,7 +350,7 @@ Two specific cleanup opportunities flagged in the audit but **not yet acted on**
 ## How to start the next session
 
 58 fetchers across 8 categories are ported; the collect→upload chain is built
-(manifest → runner/api/web run → enveloped JSON → `paramify_evidence` uploader).
+(manifest → runner/api run → enveloped JSON → `paramify_evidence` uploader).
 What's left is new categories and the framework pieces that gate them (see
 "Remaining work" above):
 
