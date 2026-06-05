@@ -1,0 +1,9 @@
+# Cadence schedule for the scheduler service. Times are UTC (container clock).
+# SHELL+BASH_ENV make each job a bash shell that restores the container env
+# (cron strips it); >/proc/1/fd/{1,2} sends output to `docker logs`.
+SHELL=/bin/bash
+BASH_ENV=/tmp/container-env.sh
+
+# min  hour  dom  mon  dow   command
+0     2     *    *    *      cd /app && ./deploy/run-and-upload.sh daily  >/proc/1/fd/1 2>/proc/1/fd/2
+0     3     *    *    1      cd /app && ./deploy/run-and-upload.sh weekly >/proc/1/fd/1 2>/proc/1/fd/2
