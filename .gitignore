@@ -30,6 +30,13 @@ venv/
 # --- Claude Code: ignore personal settings, keep shared skills + settings.json ---
 .claude/settings.local.json
 
+# --- Terraform: never commit the local provider cache or state ---
+# .terraform/ holds platform-specific provider binaries (hundreds of MiB);
+# .terraform.lock.hcl IS committed (it pins provider versions).
+.terraform/
+*.tfstate
+*.tfstate.*
+
 # --- TUI design preview renders (regenerable; open locally) ---
 *_mock.svg
 

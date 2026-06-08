@@ -146,4 +146,7 @@ You don't SSH in — use Docker:
   customer images, build from a tagged commit.
 - **Prefer compose/K8s scheduling for production.** In-container cron is fine for
   a single host; on Kubernetes use a `CronJob` per cadence (same image, secrets
-  via K8s Secrets, AWS via IRSA).
+  via K8s Secrets, AWS via IRSA). Apply-and-watch YAML + a local walkthrough live
+  in [`k8s/`](k8s/) ([`k8s/LOCAL_K8S.md`](k8s/LOCAL_K8S.md)). For the AWS fetchers
+  specifically — ambient single-account vs. multi-account hub-and-spoke (IRSA +
+  assume-role + example Terraform) — see [`k8s/AWS_MULTI_ACCOUNT.md`](k8s/AWS_MULTI_ACCOUNT.md).
