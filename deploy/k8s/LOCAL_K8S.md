@@ -1,6 +1,6 @@
 # Run the collector on local Kubernetes (apply-and-watch)
 
-The realization of [`../LOCAL_K8S_PLAN.md`](../LOCAL_K8S_PLAN.md): a `CronJob` spins
+A `CronJob` spins
 up a throwaway Pod, secrets land as env vars, the collector runs collect→upload,
 the Pod disappears, evidence is transient. **~90% of this YAML is what runs on
 real EKS** — the two prod differences are flagged as `PROD SWAP #1/#2` in
@@ -27,7 +27,7 @@ real EKS** — the two prod differences are flagged as `PROD SWAP #1/#2` in
 
 The `aws-creds` Secret is **not** for an AWS fetcher. Its only job is to let the
 entrypoint read AWS Secrets Manager (exactly like the Docker run in
-[`../LOCAL_TESTING.md`](../LOCAL_TESTING.md)), which hydrates the
+[`../README.md`](../README.md)), which hydrates the
 `OKTA_*` + `PARAMIFY_UPLOAD_API_TOKEN` the `daily.yaml` manifest references. On
 EKS, IRSA replaces those static creds — that's SWAP #1.
 
@@ -173,6 +173,13 @@ Then in [`cronjob.yaml`](cronjob.yaml): remove the `PARAMIFY_SECRETS_ID` env and
 the `aws-creds` `envFrom`, and uncomment the `paramify-secrets` `envFrom` block.
 (On real EKS this is the External Secrets Operator / Secrets Store CSI path —
 SM → a K8s Secret → `envFrom` — see [`../README.md`](../README.md) option 2.)
+
+## What to internalize
+
+- **Kubernetes is the scheduler** (the `CronJob` controller) — there's no host process you run.
+- **Each run is an ephemeral Pod** — secrets and evidence live and die with it; no persistent volume, no long-running process.
+- **Manifest via ConfigMap** = change what's collected without rebuilding the image.
+- **The YAML here is what runs on real EKS**, give or take the two `PROD SWAP`s above (an IRSA-annotated ServiceAccount instead of static creds; a registry image).
 
 ## Troubleshooting
 
