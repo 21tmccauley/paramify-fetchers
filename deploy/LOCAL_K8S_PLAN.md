@@ -1,5 +1,9 @@
 # Plan: run the collector on local Kubernetes (for learning)
 
+> ✅ **Picked up.** This checklist is now realized as apply-and-watch YAML +
+> walkthrough in [`k8s/`](k8s/) — see [`k8s/LOCAL_K8S.md`](k8s/LOCAL_K8S.md). This
+> file remains as the "why / what to internalize" rationale behind it.
+
 **Goal:** see the EKS deployment model with your own eyes locally — a `CronJob`
 spins up a throwaway Pod, secrets land as env vars, the collector runs
 collect→upload, the Pod disappears, evidence is transient. ~90% of the YAML is
