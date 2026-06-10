@@ -7,8 +7,9 @@ would generate.
 
 > All commands below are run from the **repo root**.
 
-> **Just want to try it end-to-end on your laptop (with a test AWS secret)?**
-> Follow [`LOCAL_TESTING.md`](LOCAL_TESTING.md) — a step-by-step local run.
+This README is both the reference and the hands-on guide: sections 1–4 are the
+reference; [**Walk through it end-to-end on your laptop**](#walk-through-it-end-to-end-on-your-laptop-docker-desktop--a-test-aws-secret)
+is a guided run against a test AWS Secrets Manager secret.
 
 ## What's in here
 
@@ -21,6 +22,7 @@ would generate.
 | `run-and-upload.sh` | Chains `paramify run <manifest>` → upload to Paramify |
 | `manifests/{daily,weekly}.yaml` | **Example** cadence manifests — edit to your stack |
 | `.env.example` | Template for the secrets you inject at run time |
+| `k8s/` | Kubernetes `CronJob`s + a local→EKS walkthrough ([`k8s/LOCAL_K8S.md`](k8s/LOCAL_K8S.md)) and multi-account setup ([`k8s/AWS_MULTI_ACCOUNT.md`](k8s/AWS_MULTI_ACCOUNT.md)) |
 
 ## 1. Configure secrets
 
@@ -114,6 +116,61 @@ docker compose -f deploy/docker-compose.yml exec scheduler bash # get inside it
 Edit `deploy/crontab` to change cadences and `deploy/manifests/*.yaml` to change
 what runs. Times are **UTC** (the container clock).
 
+## Walk through it end-to-end on your laptop (Docker Desktop + a test AWS secret)
+
+A guided run: build the image, pull secrets from **AWS Secrets Manager**, run a
+fetcher, see evidence on disk, and (optionally) upload to Paramify — all locally.
+To save typing: `alias pf='docker compose -f deploy/docker-compose.yml'`.
+
+**Prerequisites:** Docker Desktop running; `aws` CLI v2 on the host, logged into
+the **test** account (`aws sso login` or a configured profile — confirm with
+`aws sts get-caller-identity`); your identity has `secretsmanager:GetSecretValue`
+on the test secret; the secret stores a flat **JSON object** of `VAR -> value`
+(use the var names the manifest you'll run references), e.g.
+`{ "PARAMIFY_UPLOAD_API_TOKEN": "…", "OKTA_API_TOKEN": "…", "OKTA_ORG_URL": "…" }`.
+
+```bash
+# 1. Host-side sanity check — prove you can read the secret. If this prints your
+#    JSON, the container can read it too.
+aws secretsmanager get-secret-value \
+  --secret-id <your-secret-name-or-arn> \
+  --region <region> --query SecretString --output text
+
+# 2. Configure deploy/.env: which secret to load, the region, and TEMPORARY AWS
+#    creds (no instance role locally — re-run the last line when they expire).
+cp deploy/.env.example deploy/.env
+cat >> deploy/.env <<'EOF'
+PARAMIFY_SECRETS_ID=<your-secret-name-or-arn>
+AWS_REGION=<region>
+EOF
+aws configure export-credentials --format env-no-export >> deploy/.env
+# deploy/.env is gitignored and never enters the image — injected at run time only.
+
+# 3. Build.
+pf build
+
+# 4. Verify secret hydration BEFORE running anything real (prints presence, not the value).
+pf run --rm collector bash -lc '[ -n "$PARAMIFY_UPLOAD_API_TOKEN" ] && echo "secret loaded ✅" || echo "MISSING ❌"'
+
+# 5. Run a collection and look at the evidence (appears on your host).
+pf run --rm collector paramify list
+pf run --rm collector paramify run deploy/manifests/daily.yaml
+ls -R evidence/
+
+# 6. (Optional) Full chain — collect AND upload. Hits real Paramify; uses
+#    PARAMIFY_UPLOAD_API_TOKEN from the secret (PARAMIFY_API_BASE_URL defaults to stage).
+pf run --rm collector ./deploy/run-and-upload.sh daily
+
+# 7. Confirm no secrets are baked into the image (prints nothing = good).
+docker run --rm paramify-fetchers:beta sh -c 'find / -name ".env" 2>/dev/null' || true
+```
+
+Point `deploy/manifests/daily.yaml` at a fetcher whose creds are in your test
+secret. A fetcher that reaches a real tool and **fails with 401/DNS** still proves
+the secret plumbing works — exit 0 with empty data would be the bug. If upload
+ingestion rejects the file, try `artifact_payload: payload` in an uploader config
+(see `examples/upload.yaml`) — that's the open envelope-vs-payload question.
+
 ## How to interact with a running container
 
 You don't SSH in — use Docker:
@@ -136,6 +193,17 @@ You don't SSH in — use Docker:
   `run-and-upload.sh` ships it to Paramify so nothing is lost when the run ends.
 - **cwd matters** — jobs `cd /app` so the tool can find its root.
 
+## Troubleshooting
+
+| Symptom | Likely cause / fix |
+|---|---|
+| `Cannot connect to the Docker daemon` | Start Docker Desktop |
+| `[entrypoint] ERROR: cannot read secret …` | AWS creds expired → re-run the `aws configure export-credentials` line; or wrong `AWS_REGION` |
+| `AccessDenied … GetSecretValue` | Your identity lacks `secretsmanager:GetSecretValue` on that secret |
+| `secret … must be a flat JSON object` | The secret isn't `{"VAR":"value", …}` — fix its shape |
+| Fetcher exits with "missing secret" | A `${env:VAR}` in the manifest has no matching key in the secret — align the names |
+| Evidence not on host | Run from the repo root so `./evidence` maps correctly |
+
 ## Before you hand this to customers
 
 - **Validate the upload against a real Paramify tenant.** The uploader has only
@@ -146,4 +214,7 @@ You don't SSH in — use Docker:
   customer images, build from a tagged commit.
 - **Prefer compose/K8s scheduling for production.** In-container cron is fine for
   a single host; on Kubernetes use a `CronJob` per cadence (same image, secrets
-  via K8s Secrets, AWS via IRSA).
+  via K8s Secrets, AWS via IRSA). Apply-and-watch YAML + a local walkthrough live
+  in [`k8s/`](k8s/) ([`k8s/LOCAL_K8S.md`](k8s/LOCAL_K8S.md)). For the AWS fetchers
+  specifically — ambient single-account vs. multi-account hub-and-spoke (IRSA +
+  assume-role + example Terraform) — see [`k8s/AWS_MULTI_ACCOUNT.md`](k8s/AWS_MULTI_ACCOUNT.md).
