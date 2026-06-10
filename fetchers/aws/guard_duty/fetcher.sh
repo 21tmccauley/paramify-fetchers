@@ -45,13 +45,23 @@ jq -n \
 
 # --- per-script data collection (ported from upstream) ---
 
-# Get detector IDs. Empty list / GuardDuty not enabled is valid evidence, not a failure.
-detectors=$(aws guardduty list-detectors --query 'DetectorIds[*]' --output json 2>/dev/null)
+# Get detector IDs. GuardDuty not enabled is valid evidence, not a failure — and it
+# surfaces two ways depending on the account: an empty DetectorIds list (exit 0), OR
+# a SubscriptionRequiredException (the account/region was never subscribed, so the
+# call errors). Treat both as "not enabled"; only OTHER API errors (AccessDenied,
+# throttling, …) are real collection failures. Capture stderr so we can tell them apart.
+_LIST_ERR="$(mktemp -t aws_guard_duty_list.XXXXXX)"
+detectors=$(aws guardduty list-detectors --query 'DetectorIds[*]' --output json 2>"$_LIST_ERR")
 ec=$?
 if [ $ec -ne 0 ]; then
-    echo "aws guardduty list-detectors failed (exit=$ec)" >> "$_FAILURE_LOG"
+    if grep -q 'SubscriptionRequiredException' "$_LIST_ERR"; then
+        log_info "GuardDuty not enabled in $REGION (SubscriptionRequiredException) — recording as not enabled"
+    else
+        echo "aws guardduty list-detectors failed (exit=$ec): $(tr '\n' ' ' < "$_LIST_ERR")" >> "$_FAILURE_LOG"
+    fi
     detectors='[]'
 fi
+rm -f "$_LIST_ERR"
 if [ -z "$detectors" ] || ! echo "$detectors" | jq . >/dev/null 2>&1; then
     detectors='[]'
 fi
