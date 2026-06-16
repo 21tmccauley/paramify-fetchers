@@ -1,0 +1,34 @@
+name: aws_codebuild_pipeline_config
+version: 0.1.0
+description: Collects AWS CodeBuild project configuration (source, environment, logging, and artifact encryption) for build-pipeline change-management evidence.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_codebuild_pipeline_config.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-CODEBUILD-CONFIG
+  name: AWS CodeBuild Pipeline Configuration
+  instructions: 'Script: aws_codebuild_pipeline_config.sh. Commands executed: aws codebuild list-projects, aws codebuild batch-get-projects (collects per-project source, environment, logsConfig, and artifacts encryption). Maps to KSI-CMT-03.'

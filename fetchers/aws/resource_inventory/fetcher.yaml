@@ -1,0 +1,34 @@
+name: aws_resource_inventory
+version: 0.1.0
+description: Collects AWS Resource Explorer indexes and views as an asset inventory (index ARN/region/type and view ARN/name/filters), falling back to a Resource Explorer resource count when no index is enabled.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_resource_inventory.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-RESOURCE-INVENTORY
+  name: AWS Resource Inventory
+  instructions: 'Script: aws_resource_inventory.sh. Commands executed: aws resourceexplorer2 list-indexes, aws resourceexplorer2 list-views, aws resourceexplorer2 get-default-view, aws resourceexplorer2 search (resource count fallback when no index is enabled). Maps to KSI-PIY-01.'

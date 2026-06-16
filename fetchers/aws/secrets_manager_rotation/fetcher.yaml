@@ -1,0 +1,34 @@
+name: aws_secrets_manager_rotation
+version: 0.1.0
+description: For each Secrets Manager secret in the region, reports automatic rotation status, rotation interval in days, last-rotated date, and the KMS key used to encrypt the secret.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_secrets_manager_rotation.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-SECRETS-ROTATION
+  name: Secrets Manager Rotation
+  instructions: 'Script: secrets_manager_rotation.sh. Commands executed: aws secretsmanager list-secrets, aws secretsmanager describe-secret. Maps to KSI-SVC-06.'

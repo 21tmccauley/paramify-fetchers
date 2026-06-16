@@ -1,0 +1,34 @@
+name: aws_access_analyzer_findings
+version: 0.1.0
+description: Lists AWS IAM Access Analyzer analyzers and their status, plus the active external-access findings reported by each ACTIVE analyzer (finding id, status, resource, resource type, and external principal). No analyzers or no active findings is valid evidence.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_access_analyzer_findings.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: Optional. AWS region to collect from; falls back to the ambient region (AWS_REGION / instance) when omitted.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: Optional. AWS named profile for multi-account fanout; falls back to the ambient identity (IRSA / instance role / SSO / env) when omitted.
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-ACCESS-ANALYZER
+  name: IAM Access Analyzer Findings
+  instructions: 'Script: fetcher.sh. Commands executed: aws accessanalyzer list-analyzers, aws accessanalyzer list-findings (filtered to ACTIVE findings, per ACTIVE analyzer). Maps to KSI-IAM-04.'

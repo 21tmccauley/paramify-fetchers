@@ -1,0 +1,34 @@
+name: aws_kinesis_encryption_status
+version: 0.1.0
+description: For each Kinesis data stream in the account/region, reports server-side encryption type (NONE/KMS) and the KMS key id.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_kinesis_encryption_status.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-KINESIS-ENC
+  name: Kinesis Data Stream Encryption
+  instructions: 'Script: kinesis_encryption_status.sh. Commands executed: aws kinesis list-streams, aws kinesis describe-stream-summary. Maps to KSI-SVC-03.'

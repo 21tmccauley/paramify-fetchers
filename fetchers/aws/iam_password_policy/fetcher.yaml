@@ -1,0 +1,34 @@
+name: aws_iam_password_policy
+version: 0.1.0
+description: Captures the IAM account password policy (minimum length, complexity requirements, reuse prevention, max age, change/expiry settings) for password-strength evidence.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_iam_password_policy.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: Optional. Global service — only sets the API endpoint region, does not scope results.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-IAM-PASSWORD-POLICY
+  name: IAM Account Password Policy
+  instructions: 'Script: iam_password_policy.sh. Commands executed: aws iam get-account-password-policy. Maps to KSI-IAM-02.'

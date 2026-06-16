@@ -1,0 +1,34 @@
+name: aws_cloudfront_distribution_security
+version: 0.1.0
+description: Lists CloudFront distributions with their viewer protocol policy, minimum TLS version, WAF (web ACL) association, and access logging state to report transit-protection posture.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_cloudfront_distribution_security.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-CLOUDFRONT-SECURITY
+  name: AWS CloudFront Distribution Security
+  instructions: 'Script: aws_cloudfront_distribution_security.sh. Commands executed: aws cloudfront list-distributions, aws cloudfront get-distribution-config. Maps to KSI-SVC-02.'

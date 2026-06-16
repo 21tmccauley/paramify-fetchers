@@ -1,0 +1,100 @@
+#!/bin/bash
+#
+# AWS — DocumentDB Encryption at Rest + TLS
+#
+# For each DocumentDB cluster in the account/region, reports encryption at rest
+# (StorageEncrypted, KMS key) and the TLS parameter from its cluster parameter
+# group.
+#
+# Output: $EVIDENCE_DIR/aws_documentdb_encryption_status.json
+# Optional env (else the AWS CLI ambient identity/region): AWS_PROFILE, AWS_DEFAULT_REGION
+# Required tools: aws, jq
+
+set -o pipefail
+
+[ -f .env ] && { set -a; . .env; set +a; }
+
+OUTPUT_DIR="${EVIDENCE_DIR:-./evidence}"
+mkdir -p "$OUTPUT_DIR"
+
+# Identity/region come from the AWS CLI credential chain. A manifest target may
+# set AWS_PROFILE/AWS_DEFAULT_REGION (multi-account / multi-region fanout); when
+# unset, the CLI uses the ambient identity/region. The helper sets PROFILE/REGION
+# (for metadata) and provides aws_target_id (for the output filename).
+source "$(dirname "$0")/../_shared/aws.sh"
+
+# Per-target output filename (profile+region) so multi-target runs don't overwrite.
+_TARGET_ID="$(aws_target_id "$REGION")"
+OUTPUT_JSON="$OUTPUT_DIR/aws_documentdb_encryption_status_${_TARGET_ID}.json"
+_FETCHER_TMP_JSON="$(mktemp -t aws_documentdb_encryption_status.XXXXXX.json)"
+_FAILURE_LOG="$(mktemp -t aws_documentdb_encryption_status_fail.XXXXXX)"
+trap 'rm -f "$_FETCHER_TMP_JSON" "$_FAILURE_LOG"' EXIT
+
+log_info() { printf '%s INFO aws_documentdb_encryption_status %s\n' "$(date -u +'%Y-%m-%d %H:%M:%S')" "$*" >&2; }
+log_error() { printf '%s ERROR aws_documentdb_encryption_status %s\n' "$(date -u +'%Y-%m-%d %H:%M:%S')" "$*" >&2; }
+
+CALLER_IDENTITY=$(aws sts get-caller-identity --output json 2>/dev/null)
+if [ $? -ne 0 ]; then
+    echo "aws sts get-caller-identity failed" >> "$_FAILURE_LOG"
+    CALLER_IDENTITY='{"Account":"unknown","Arn":"unknown"}'
+fi
+ACCOUNT_ID=$(echo "$CALLER_IDENTITY" | jq -r '.Account // "unknown"')
+ARN=$(echo "$CALLER_IDENTITY" | jq -r '.Arn // "unknown"')
+DATETIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+jq -n \
+  --arg profile "$PROFILE" --arg region "$REGION" --arg datetime "$DATETIME" \
+  --arg account_id "$ACCOUNT_ID" --arg arn "$ARN" \
+  '{"metadata": {"profile": $profile, "region": $region, "datetime": $datetime, "account_id": $account_id, "arn": $arn}, "results": []}' \
+  > "$OUTPUT_JSON"
+
+clusters_json=$(aws docdb describe-db-clusters \
+    --filters Name=engine,Values=docdb \
+    --output json 2>/dev/null)
+list_exit=$?
+if [ $list_exit -ne 0 ]; then
+    echo "aws docdb describe-db-clusters (list) failed (exit=$list_exit)" >> "$_FAILURE_LOG"
+    log_error "Failed to list DocumentDB clusters"
+else
+    cluster_count=$(echo "$clusters_json" | jq '.DBClusters | length')
+    for ((i = 0; i < cluster_count; i++)); do
+        cluster=$(echo "$clusters_json" | jq ".DBClusters[$i]")
+
+        cluster_id=$(echo "$cluster" | jq -r '.DBClusterIdentifier')
+        arn=$(echo "$cluster" | jq -r '.DBClusterArn // "None"')
+        engine=$(echo "$cluster" | jq -r '.Engine')
+        encrypted=$(echo "$cluster" | jq -r '.StorageEncrypted // false')
+        kms_key_id=$(echo "$cluster" | jq -r '.KmsKeyId // "None"')
+        parameter_group=$(echo "$cluster" | jq -r '.DBClusterParameterGroup // "None"')
+
+        tls="unknown"
+        if [ "$parameter_group" != "None" ]; then
+            tls=$(aws docdb describe-db-cluster-parameters \
+                --db-cluster-parameter-group-name "$parameter_group" \
+                --query "Parameters[?ParameterName=='tls'].ParameterValue | [0]" \
+                --output text 2>/dev/null)
+            if [ $? -ne 0 ]; then
+                echo "aws docdb describe-db-cluster-parameters ($parameter_group) failed" >> "$_FAILURE_LOG"
+                tls="unknown"
+            fi
+            { [ -z "$tls" ] || [ "$tls" = "None" ]; } && tls="unknown"
+        fi
+
+        cluster_data=$(jq -n \
+            --arg id "$cluster_id" --arg arn "$arn" --arg eng "$engine" \
+            --argjson enc "$encrypted" --arg kms "$kms_key_id" \
+            --arg pg "$parameter_group" --arg tls "$tls" \
+            '{id: $id, arn: $arn, engine: $eng, encrypted: $enc, kms_key_id: $kms, parameter_group: $pg, tls: $tls}')
+
+        jq --argjson data "$cluster_data" '.results += [$data]' "$OUTPUT_JSON" > "$_FETCHER_TMP_JSON" && mv "$_FETCHER_TMP_JSON" "$OUTPUT_JSON"
+    done
+fi
+
+failure_count=$(wc -l < "$_FAILURE_LOG" 2>/dev/null | tr -d ' ')
+failure_count=${failure_count:-0}
+if [ "$failure_count" -gt 0 ]; then
+    log_error "Encountered $failure_count AWS API failures during collection"
+    exit 1
+fi
+
+log_info "Evidence saved to $OUTPUT_JSON"

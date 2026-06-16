@@ -1,0 +1,34 @@
+name: aws_iam_mfa_status
+version: 0.1.0
+description: Reports MFA enforcement for the root account and every IAM user, including whether each MFA device is hardware or virtual, for MFA evidence.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_iam_mfa_status.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: Optional. Global service — only sets the API endpoint region, does not scope results.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-IAM-MFA
+  name: IAM MFA Status
+  instructions: 'Script: iam_mfa_status.sh. Commands executed: aws iam get-account-summary, aws iam list-virtual-mfa-devices, aws iam list-users, aws iam list-mfa-devices. Maps to KSI-IAM-01.'

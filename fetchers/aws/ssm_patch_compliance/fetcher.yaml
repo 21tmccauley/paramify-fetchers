@@ -1,0 +1,34 @@
+name: aws_ssm_patch_compliance
+version: 0.1.0
+description: Lists SSM managed instances and their patch compliance status, summarizing compliant vs non-compliant counts for patch-management evidence.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_ssm_patch_compliance.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-SSM-PATCH
+  name: AWS SSM Patch Compliance
+  instructions: 'Script: aws_ssm_patch_compliance.sh. Commands executed: aws ssm describe-instance-information, aws ssm list-resource-compliance-summaries --filters Key=ComplianceType,Values=Patch. Maps to KSI-SVC-07.'

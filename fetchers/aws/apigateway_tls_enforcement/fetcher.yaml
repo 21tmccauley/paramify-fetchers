@@ -1,0 +1,38 @@
+name: aws_apigateway_tls_enforcement
+version: 0.1.0
+description: Collects API Gateway REST API endpoint configuration, stage-level security settings (client certificate, WAF, logging, tracing, cache encryption), and custom domain name TLS minimum version (securityPolicy).
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_apigateway_tls_enforcement.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-APIGATEWAY-TLS
+  name: API Gateway TLS Enforcement
+  instructions: >-
+    Collected via aws apigateway get-rest-apis (REST API endpoint configuration),
+    aws apigateway get-stages (per-API stage security: client certificate, WAF,
+    logging, tracing, cache data encryption), and aws apigateway get-domain-names
+    (custom domain securityPolicy / TLS minimum version). Maps to KSI-SVC-02.

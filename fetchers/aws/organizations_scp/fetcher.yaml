@@ -1,0 +1,34 @@
+name: aws_organizations_scp
+version: 0.1.0
+description: Lists AWS Organizations service control policies (SCPs) with their JSON content and the OUs/accounts they attach to, plus the organization and its roots.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_organizations_scp.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: Optional. Global service — only sets the API endpoint region, does not scope results.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-ORGANIZATIONS-SCP
+  name: Organizations Service Control Policies
+  instructions: 'Script: organizations_scp.sh. Commands executed: aws organizations describe-organization, aws organizations list-roots, aws organizations list-policies --filter SERVICE_CONTROL_POLICY, aws organizations describe-policy, aws organizations list-targets-for-policy. Maps to KSI-IAM-04.'
