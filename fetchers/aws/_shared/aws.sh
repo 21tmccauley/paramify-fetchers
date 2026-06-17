@@ -29,3 +29,32 @@ aws_target_id() {
   [ -n "${1:-}" ] && id="${id}_${1}"
   printf '%s' "$id" | tr -c 'A-Za-z0-9._-' '_'
 }
+
+# aws_service_unavailable <stderr-file> — true (exit 0) when the captured AWS CLI
+# error means the service is simply NOT IN USE for this account. That is valid
+# evidence ("not enabled / not subscribed / not applicable"), NOT a collection
+# failure, so the caller should record a not-enabled result and exit 0 rather than
+# logging a failure. Covers: service not subscribed / not opted-in, Security Hub /
+# Macie not enabled, account not a member of an Organization, Resource Explorer /
+# resource not found, and the generic "needs a subscription for the service"
+# message. Use it ONLY at a fetcher's primary enablement / top-level list call to
+# decide not-enabled (exit 0) vs. a real failure (exit 1). Genuine AccessDenied
+# (without the subscription message), throttling, and endpoint errors are NOT
+# matched here and stay real failures.
+aws_service_unavailable() {
+  [ -s "${1:-/dev/null}" ] || return 1
+  grep -qiE 'SubscriptionRequiredException|OptInRequired|needs a subscription for the service|InvalidAccessException|AWSOrganizationsNotInUseException|not a member of an organization|is not enabled|ResourceNotFoundException' "$1"
+}
+
+# aws_text_list <output> — echoes an AWS CLI `--output text` list back UNLESS it is
+# the empty-list sentinel the CLI prints for an absent/null field (the literal
+# "None", or whitespace only). Prevents the classic bug where
+# `for x in $(aws ... --query 'Items[].Id' --output text)` iterates once over the
+# string "None" and then fails a per-item call. Usage:
+#   for x in $(aws_text_list "$ids"); do ...
+aws_text_list() {
+  case "$1" in
+    None|"") return 0 ;;
+    *) printf '%s' "$1" ;;
+  esac
+}

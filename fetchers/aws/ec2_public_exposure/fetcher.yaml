@@ -1,0 +1,34 @@
+name: aws_ec2_public_exposure
+version: 0.1.0
+description: Lists EC2 instances with their public IP/DNS, IMDSv2 metadata options (http_tokens, http_endpoint), and attached security groups.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_ec2_public_exposure.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-EC2-PUBLIC-EXPOSURE
+  name: EC2 Public Exposure
+  instructions: 'Script: ec2_public_exposure.sh. Commands executed: aws ec2 describe-instances. Maps to KSI-CNA-02.'

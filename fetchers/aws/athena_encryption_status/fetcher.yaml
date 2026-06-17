@@ -1,0 +1,34 @@
+name: aws_athena_encryption_status
+version: 0.1.0
+description: For each Athena workgroup, reports query-result encryption configuration (SSE_S3/SSE_KMS/CSE_KMS) and whether the workgroup configuration is enforced.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_athena_encryption_status.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-ATHENA-ENC
+  name: Athena Workgroup Query-Result Encryption
+  instructions: 'Script: athena_encryption_status.sh. Commands executed: aws athena list-work-groups, aws athena get-work-group. Maps to KSI-SVC-03.'

@@ -1,0 +1,34 @@
+name: aws_cloudformation_drift
+version: 0.1.0
+description: Lists CloudFormation stacks with their drift status, last drift-check timestamp, and termination-protection setting for change-management evidence.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_cloudformation_drift.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-CLOUDFORMATION-DRIFT
+  name: AWS CloudFormation Drift
+  instructions: 'Script: aws_cloudformation_drift.sh. Commands executed: aws cloudformation describe-stacks. Maps to KSI-CMT-02.'

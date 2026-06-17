@@ -1,0 +1,34 @@
+name: aws_dynamodb_pitr_status
+version: 0.1.0
+description: Lists DynamoDB tables in the target region and reports each table's point-in-time recovery (PITR) / continuous-backups status as recovery-point backup evidence.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_dynamodb_pitr_status.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-DYNAMODB-PITR
+  name: DynamoDB Point-in-Time Recovery Status
+  instructions: 'Script: fetcher.sh. Commands executed: aws dynamodb list-tables, aws dynamodb describe-continuous-backups. Maps to KSI-RPL-03.'

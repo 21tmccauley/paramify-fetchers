@@ -1,0 +1,34 @@
+name: aws_codepipeline_config
+version: 0.1.0
+description: Lists AWS CodePipeline pipelines and records their stages, source providers, and artifact-store KMS encryption for change-management evidence.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_codepipeline_config.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-CODEPIPELINE-CONFIG
+  name: AWS CodePipeline Configuration
+  instructions: 'Script: aws_codepipeline_config.sh. Commands executed: aws codepipeline list-pipelines, aws codepipeline get-pipeline. Captures each pipeline''s stages, source action providers, and artifact-store KMS encryption key. Maps to KSI-CMT-03.'

@@ -1,0 +1,34 @@
+name: aws_firehose_encryption_status
+version: 0.1.0
+description: For each Firehose delivery stream, reports server-side encryption status (DeliveryStreamEncryptionConfiguration) and KMS key ARN.
+category: aws
+
+supports_targets: true
+
+runtime:
+  type: bash
+  entry: fetcher.sh
+
+output:
+  type: json
+  path: aws_firehose_encryption_status.json
+  aggregation: per_target
+
+target_schema:
+  region:
+    type: string
+    required: false
+    env: AWS_DEFAULT_REGION
+    description: AWS region to collect from.
+  profile:
+    type: string
+    required: false
+    env: AWS_PROFILE
+    description: AWS named profile (credentials resolved from ~/.aws / SSO).
+
+secrets: []
+
+evidence_set:
+  reference_id: EVD-FIREHOSE-ENC
+  name: Firehose Encryption
+  instructions: 'Script: firehose_encryption_status.sh. Commands executed: aws firehose list-delivery-streams, aws firehose describe-delivery-stream. Maps to KSI-SVC-03.'
