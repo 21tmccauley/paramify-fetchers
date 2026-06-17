@@ -191,7 +191,7 @@ manifest <sub>               build/edit a manifest file (-f/--file, default ./ma
 
 `manifest` subcommands: `init [--output-dir DIR]`, `add <fetcher>`, `remove <fetcher>`, `set-config <fetcher> key=value`, `set-secret <fetcher> <secret_name> <ENV_VAR>`, `add-target <fetcher> k=v ... [--secret name=ENV_VAR ...]`, `set-platform-config <category> key=value`, `set-passthrough <category> ENV_VAR ...`, `set-output-dir <dir>`, `show [--json]`. The builder reads each `fetcher.yaml` and warns which secrets/config are still missing until the fetcher is runnable.
 
-> **Note:** this list is illustrative of the surface's shape, not exhaustive — the live CLI also has `manifests`, `runs`, `evidence`, and `manifest new` / `remove-target`. The authoritative, current surface is `CLAUDE.md` / [`fetcher_contract.md`](fetcher_contract.md) (and `paramify --help`).
+> **Note:** this list is illustrative of the surface's shape, not exhaustive — the live CLI also has `manifests`, `runs`, `evidence`, `upload`, and `manifest new` / `remove-target`. The authoritative, current surface is `CLAUDE.md` / [`fetcher_contract.md`](fetcher_contract.md) (and `paramify --help`).
 
 ### Execution and the run directory
 
@@ -282,7 +282,8 @@ Benefits of separation:
 - Re-uploading from a prior run is trivial — point the uploader at an old output directory
 - The Wiz-style case (writing issues back to Paramify, not just evidence) becomes a different uploader, not a hack inside the fetcher
 
-The evidence uploader is built: `uploaders/paramify_evidence/` reads an enveloped run directory, gets-or-creates an evidence set by `reference_id` (Paramify REST v0), multipart-uploads the artifact, and is idempotent within a run. It supports `--dry-run`, `--config`, an https-only token guard, customer `reference_id` overrides, and auth via `PARAMIFY_UPLOAD_API_TOKEN` (+ optional `PARAMIFY_API_BASE_URL` / `--config base_url`). The Wiz-style issues uploader (`uploaders/paramify_issues/`) is still an empty stub.
+The evidence uploader is built (and exposed as `paramify upload`):
+`uploaders/paramify_evidence/` reads an enveloped run directory, gets-or-creates an evidence set by `reference_id` (Paramify REST v0), multipart-uploads the artifact, and is idempotent within a run. It supports `--dry-run`, `--config`, an https-only token guard, customer `reference_id` overrides, and auth via `PARAMIFY_UPLOAD_API_TOKEN` (+ optional `PARAMIFY_API_BASE_URL` / `--config base_url`). The Wiz-style issues uploader (`uploaders/paramify_issues/`) is still an empty stub.
 
 Orchestration that chains collect → upload is customer-owned, not built into the runner. `run_and_upload.sh` at the repo root is example glue.
 

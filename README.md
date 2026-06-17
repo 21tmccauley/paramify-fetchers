@@ -61,6 +61,7 @@ paramify validate <manifest>   # validate a manifest without running
 paramify run      <manifest>   # run it
 paramify runs                  # past runs under an output dir (newest first)
 paramify evidence <file>       # read one evidence file (normalizing the envelope)
+paramify upload   [run-dir]    # push a run's evidence to Paramify (default: latest run)
 paramify manifest <sub>        # build/edit a manifest (see below)
 ```
 
@@ -103,16 +104,19 @@ Collection and upload are separate stages on purpose. The runner only collects;
 pushing to Paramify is a second step, run against the enveloped run directory:
 
 ```bash
-paramify run manifest.yaml                           # collect → enveloped JSON in run-<ts>/
-python -m uploaders.paramify_evidence <run-dir>      # upload that run (get-or-create evidence
-                                                     # set by reference_id, multipart artifacts)
+paramify run manifest.yaml          # collect → enveloped JSON in run-<ts>/
+paramify upload                     # upload the latest run (get-or-create evidence
+                                    # set by reference_id, multipart artifacts)
 ```
 
-The uploader is idempotent within a run, supports `--dry-run` and `--config`,
-talks Paramify REST v0 over HTTPS only, and reads
-`PARAMIFY_UPLOAD_API_TOKEN` (with optional `PARAMIFY_API_BASE_URL`). Chaining
-the two stages is the customer's job, not the runner's; `run_and_upload.sh` at
-the repo root is example glue.
+`paramify upload` takes an optional run directory (default: the latest run under
+`--output-dir`) and supports `--dry-run`, `--config`, and `--json`; the same
+uploader can also be invoked directly as
+`python -m uploaders.paramify_evidence <run-dir>`. It is idempotent within a run,
+talks Paramify REST v0 over HTTPS only, and reads `PARAMIFY_UPLOAD_API_TOKEN`
+(with optional `PARAMIFY_API_BASE_URL`). Chaining the two stages is the
+customer's job, not the runner's; `run_and_upload.sh` at the repo root is
+example glue.
 
 ---
 

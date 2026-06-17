@@ -233,6 +233,7 @@ paramify validate <manifest.yaml> [--json]   # validate without running
 paramify run <manifest.yaml> [--json]        # run the manifest
 paramify runs [--json]                       # past runs under an output dir (newest first)
 paramify evidence <file> [--json]            # read one evidence file (normalizing the envelope)
+paramify upload [run-dir] [--json]           # push one run's evidence to Paramify (default: latest run)
 ```
 
 `--json` is available on every command and emits machine-readable output for
