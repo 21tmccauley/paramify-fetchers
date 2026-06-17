@@ -41,6 +41,9 @@ venv/
 # --- TUI design preview renders (regenerable; open locally) ---
 *_mock.svg
 
+# --- VHS demo recordings: scratch dir is throwaway; the .tape/.gif ARE committed ---
+docs/demo/.scratch/
+
 # --- macOS / editors ---
 .DS_Store
 .idea/
