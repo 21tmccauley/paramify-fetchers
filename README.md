@@ -15,6 +15,11 @@ README is for you.
    (Okta, AWS…)                (on disk, per run)     (separate stage)
 ```
 
+The `paramify` CLI is the way in — list the catalog, then inspect any one
+fetcher's contract:
+
+![Browsing the fetcher catalog with the paramify CLI](docs/demo/catalog.gif)
+
 ---
 
 ## How it runs
@@ -50,6 +55,11 @@ paramify tui                      # interactive terminal UI
 > still work and are exactly equivalent to the corresponding `paramify`
 > subcommands.
 
+`paramify tui` drives that same facade interactively — browse the catalog, build
+and validate a manifest, run it, and review evidence without leaving the keyboard:
+
+![The paramify terminal UI](docs/demo/tui.gif)
+
 The CLI command surface:
 
 ```bash
@@ -78,6 +88,8 @@ the `evidence_set` identity; failed invocations also get a `stderr_tail`. The
 `paramify manifest <sub>` edits a manifest file in place (`-f/--file`, default
 `./manifest.yaml`). It reads each `fetcher.yaml` and warns which secrets and
 config are still missing until the manifest is runnable.
+
+![Building a run manifest step by step with paramify manifest](docs/demo/manifest.gif)
 
 ```bash
 paramify manifest init [--output-dir DIR]            # start a manifest at -f/--file
