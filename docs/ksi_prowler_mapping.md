@@ -1,6 +1,6 @@
 # KSI → Prowler → Fetcher Mapping (AWS)
 
-**Status:** AWS gaps BUILT on branch `feat/aws-ksi-fetchers` (v0.x — schema +
+**Status:** AWS gaps BUILT and merged to `main` (PR #14) (v0.x — schema +
 syntax + discovery validated, smoke-tested with fake creds; pending a real-tenant run)
 **Created:** 2026-06-16
 **Updated:** 2026-06-16 — all 49 AWS gap fetchers generated (see 🆕 rows)
@@ -27,7 +27,7 @@ served by other integrations (KnowBe4, Rippling, GitLab/GitHub, manual evidence)
 ## Legend
 
 - ✅ **exists** — original, battle-tested fetcher in `fetchers/aws/`
-- 🆕 **built** — generated 2026-06-16 on branch `feat/aws-ksi-fetchers`; passes
+- 🆕 **built** — generated 2026-06-16, merged to `main` in PR #14; passes
   schema + `bash -n` + `paramify list`, smoke-tested with fake creds; **not yet
   run against a real account** (jq field paths verified vs the Prowler spec only)
 - 🔲 **gap** — proposed; not yet built
@@ -254,8 +254,8 @@ Build per the CSO's actual stack, not all 14 Prowler providers.
 
 ## Status & next steps
 
-All 49 AWS gaps in this worksheet are now built (the 🆕 rows), on branch
-`feat/aws-ksi-fetchers` — **79 AWS fetchers total, 0 remaining config-evidenceable
+All 49 AWS gaps in this worksheet are now built (the 🆕 rows) and merged to
+`main` (PR #14) — **79 AWS fetchers total, 0 remaining config-evidenceable
 AWS gaps.** They pass schema + `bash -n` + `paramify list` discovery and were
 smoke-tested with fake creds (correct `{metadata, results}` envelope, failure
 tracking → non-zero exit, regional/global filename split). The outstanding step:

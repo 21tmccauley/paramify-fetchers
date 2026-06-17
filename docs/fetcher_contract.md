@@ -107,6 +107,7 @@ paramify validate <manifest.yaml>   # validates a manifest against the schema + 
 paramify run <manifest.yaml>        # collect: enveloped JSON + _run_metadata.json under the output dir
 paramify runs                       # past runs under the output dir (newest first)
 paramify evidence <file>            # read one evidence file (normalizing the envelope)
+paramify upload [run-dir]           # push one run's evidence to Paramify (default: latest run)
 paramify manifest <sub>             # build/edit a manifest file (init/new/add/remove/set-config/set-secret/add-target/remove-target/...)
 ```
 

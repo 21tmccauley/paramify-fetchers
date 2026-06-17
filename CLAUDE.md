@@ -85,6 +85,9 @@ CLI surface (`paramify <cmd>`, all accept `--json`):
 - `validate <manifest>` / `run <manifest>`
 - `runs [--output-dir DIR]` — past runs under an output dir (newest first)
 - `evidence <file>` — read one evidence file (normalizing the envelope)
+- `upload [run-dir]` — push one run's evidence to Paramify via the
+  `paramify_evidence` uploader (default: latest run under `--output-dir`;
+  `--dry-run`/`--config`)
 - `manifest <sub>` — build/edit a manifest (`-f/--file`, default
   `./manifest.yaml`; every sub emits `{ok,path,errors}` under `--json`):
   `init [--output-dir DIR]`, `new <name>`, `add <fetcher>`,
