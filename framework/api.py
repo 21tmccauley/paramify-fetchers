@@ -157,7 +157,9 @@ def dump_manifest(manifest: dict, path: Path, root: Path) -> None:
     errs = manifest_loader.schema_errors(manifest, root)
     if errs:
         raise ValueError("refusing to write schema-invalid manifest:\n  " + "\n  ".join(errs))
-    Path(path).write_text(yaml.safe_dump(manifest, sort_keys=False, default_flow_style=False))
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(yaml.safe_dump(manifest, sort_keys=False, default_flow_style=False))
 
 
 # --------------------------------------------------------------------------- #
