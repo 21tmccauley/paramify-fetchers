@@ -36,8 +36,8 @@ they'll attach in Paramify, not an artifact this repo stores or executes.
   envelope (`schema_version`+`metadata`+`payload`), since that's the file
   Paramify's validator sees. So avoid anchor keys that collide with envelope
   metadata (`fetcher_name`, `fetcher_version`, `category`, `run_id`, `target`,
-  `collected_at`, `status`, `exit_code`, `evidence_set`, `schema_version`) unless
-  you pin a payload-specific value too.
+  `collected_at`, `status`, `exit_code`, `error`, `evidence_set`,
+  `schema_version`) unless you pin a payload-specific value too.
 
 ---
 
@@ -66,7 +66,7 @@ they'll attach in Paramify, not an artifact this repo stores or executes.
    sibling target files share its shape.
 
 3. **No evidence at all?** If nothing matches, the fetcher hasn't been run yet.
-   Stop and route the user to run it first (`wire-manifest` → `runner run`),
+   Stop and route the user to run it first (`wire-manifest` → `paramify run`),
    against a **real tenant** — this skill has nothing to read without that.
 
 ---

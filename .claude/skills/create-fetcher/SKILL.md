@@ -45,7 +45,7 @@ restate them here.
    gh api repos/paramify/evidence-fetchers/contents/fetchers/<category> 2>/dev/null \
      | grep -i '<short_name>' || echo "no upstream match"
    ```
-   - **Found upstream → PORT.** Follow `docs/ai_port_recipe.md` step by step
+   - **Found upstream → PORT.** Follow `docs/porting_playbook.md` step by step
      (it has its own verify gates and anti-patterns). Stop using this file.
    - **Not found → NET-NEW.** Continue below.
 
@@ -54,13 +54,13 @@ restate them here.
 ## Phase 1 — Orient
 
 Read these before building (skim, don't summarize back):
-- `docs/authoring_a_fetcher.md` — the net-new authoring guide.
+- `docs/authoring_a_fetcher.md` — the net-new authoring guide. This is the
+  canonical reference for the rest of this skill; lean on it, don't restate it.
 - `framework/schemas/fetcher_schema.json` — the enforced schema (required:
   name, version, description, runtime, output, secrets).
-- The closest **reference fetcher** to mirror:
-  - Single-target bash (CLI + jq): `fetchers/aws/s3_encryption_status/`
-  - Single-target Python (REST/SDK): `fetchers/okta/phishing_resistant_mfa/`
-  - Fanout Python (per-target secrets + config): `fetchers/gitlab/ci_cd_pipeline_config/`
+- The closest **reference fetcher** to mirror — pick from the list in
+  `docs/authoring_a_fetcher.md` §"Reference fetchers" (single vs. fanout ×
+  bash vs. Python), so the skill never drifts from the maintained set.
 
 ---
 
@@ -117,13 +117,14 @@ single confirmation before building.
 3. **Write `fetcher.yaml`** to the schema. Use the auth/fanout decisions from
    Phase 2. Include the `evidence_set` block.
 
-4. **Write the entry script** from the skeleton in `docs/porting_playbook.md` §5
-   (bash or python). Keep status output to one `logger.info`/`log_info`
-   "Evidence saved to …" line on success. Mirror the reference fetcher's shape.
+4. **Write the entry script** following `docs/authoring_a_fetcher.md`
+   §`fetcher.py` / §`fetcher.sh` (which link onward to the canonical skeleton).
+   Keep status output to one `logger.info`/`log_info` "Evidence saved to …"
+   line on success. Mirror the reference fetcher's shape.
 
-5. **Wire failure → exit code** per `docs/porting_playbook.md` §"Exit code
-   convention": track collection failures, exit non-zero if any occurred
-   (Python: an `api_failures` list; bash: a temp-file counter).
+5. **Wire failure → exit code** per `docs/authoring_a_fetcher.md` §"Detecting
+   collection failures": track collection failures, exit non-zero if any
+   occurred (Python: an `api_failures` list; bash: a temp-file counter).
 
 6. If bash: `chmod +x fetchers/<category>/<short_name>/fetcher.sh`.
 
@@ -170,8 +171,8 @@ The skill verifies **wiring**, not data — it can't hit the user's real tenant.
 
 ## Anti-patterns
 
-Full list in `docs/ai_port_recipe.md` §"Anti-patterns" — they apply to net-new
-too. The ones that bite most often:
+Full list in `docs/authoring_a_fetcher.md` §"What you don't need to do". The
+ones that bite most often:
 
 - Directory `<category>_<short_name>/` → use `<short_name>/` only.
 - `version: 1.0.0` → `0.1.0` for pre-contract fetchers.
