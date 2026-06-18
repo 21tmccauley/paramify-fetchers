@@ -12,6 +12,20 @@ cd /app
 # refuses to send the bearer token over cleartext to a non-loopback host).
 export PARAMIFY_API_BASE_URL="${PARAMIFY_API_BASE_URL:-https://stage.paramify.com/api/v0}"
 
+# Read-only `paramify` subcommands only inspect the local fetcher catalog, so
+# they need no secrets. Skip hydration for them (and for help/empty, which falls
+# through to `paramify list`) — otherwise the `paramify list` sanity check would
+# fail whenever PARAMIFY_SECRETS_ID is set but AWS creds are absent/expired.
+_needs_secrets=1
+case "${1:-}" in
+  ""|-h|--help) _needs_secrets=0 ;;
+  paramify)
+    case "${2:-}" in
+      list|catalog|describe|manifests) _needs_secrets=0 ;;
+    esac
+    ;;
+esac
+
 # --- Optional: hydrate env from AWS Secrets Manager (source-agnostic) ---------
 # Set PARAMIFY_SECRETS_ID to one secret ID/ARN (or a comma-separated list), each
 # holding a JSON object of VAR->value, e.g.
@@ -20,7 +34,7 @@ export PARAMIFY_API_BASE_URL="${PARAMIFY_API_BASE_URL:-https://stage.paramify.co
 # EC2 instance role) — never static keys; requires AWS_REGION. Uses the aws + jq
 # already in the image. (On ECS/EKS, prefer the orchestrator's native secret
 # injection over this — see deploy/README.md.)
-if [ -n "${PARAMIFY_SECRETS_ID:-}" ]; then
+if [ -n "${PARAMIFY_SECRETS_ID:-}" ] && [ "$_needs_secrets" = 1 ]; then
   IFS=',' read -ra _sids <<< "$PARAMIFY_SECRETS_ID"
   for _sid in "${_sids[@]}"; do
     _sid="$(echo "$_sid" | xargs)"        # trim surrounding whitespace
