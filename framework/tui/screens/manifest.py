@@ -21,7 +21,13 @@ from textual.widgets import Button, DataTable, Input, Static
 from framework import api
 from framework.tui import render
 from framework.tui.components.forms import env_name_from_ref
-from framework.tui.modals import ConfirmModal, FormModal, PickerModal, PreviewModal
+from framework.tui.modals import (
+    ConfirmModal,
+    FormModal,
+    MultiPickerModal,
+    PickerModal,
+    PreviewModal,
+)
 
 
 class ManifestPage(Vertical):
@@ -264,40 +270,49 @@ class ManifestPage(Vertical):
             return
         existing = {e.get("use") for e in self._entries()}
         cat = getattr(self.app, "catalog_data", None)
-        options = []
+        groups = []
         if cat:
             for c in cat["categories"]:
-                for f in c["fetchers"]:
-                    if f["name"] not in existing:
-                        options.append((f["name"], f"{f['name']}   [{c['name']}]"))
-        if not options:
+                names = [f["name"] for f in c["fetchers"] if f["name"] not in existing]
+                if names:
+                    groups.append((c["name"], names))
+        if not groups:
             self.notify("Every discovered fetcher is already in the manifest.")
             return
 
-        def done(name: Optional[str]) -> None:
-            if not name:
+        def done(names: Optional[List[str]]) -> None:
+            if not names:
                 return
-            api.add_entry(m, name)
-            # Auto-wire entry-level secrets to their suggested env var names: the
-            # default is almost always correct, so the edit form is only needed
-            # for the edge case where a name differs. (Per-target secrets are not
-            # wired here — each target usually needs a distinct credential.)
-            d = self._descriptors().get(name)
-            wired = []
-            if d:
-                for s in d.get("secrets", []):
-                    if not s.get("per_target") and s.get("env"):
-                        api.set_secret(m, name, s["name"], s["env"])
-                        wired.append(s["name"])
-            self._selected = name
+            # Auto-wire each added fetcher's entry-level secrets to their suggested
+            # env var names: the default is almost always correct, so the edit form
+            # is only needed for the edge case where a name differs. (Per-target
+            # secrets are not wired here — each target usually needs its own cred.)
+            descriptors = self._descriptors()
+            wired = False
+            for name in names:
+                api.add_entry(m, name)
+                d = descriptors.get(name)
+                if d:
+                    for s in d.get("secrets", []):
+                        if not s.get("per_target") and s.get("env"):
+                            api.set_secret(m, name, s["name"], s["env"])
+                            wired = True
+            self._selected = names[-1]
             self.rebuild()
+            n = len(names)
+            noun = "fetcher" if n == 1 else "fetchers"
             if wired:
-                self.notify(f"Added {name} — secrets wired to default env vars (e to change).")
+                self.notify(f"Added {n} {noun} — secrets wired to default env vars (e to change).")
             else:
-                self.notify(f"Added {name}.")
+                self.notify(f"Added {n} {noun}.")
 
         self.app.push_screen(
-            PickerModal("Add fetcher", options, subtitle="Pick a fetcher to add"), done
+            MultiPickerModal(
+                "Add fetchers",
+                groups,
+                subtitle="enter/space opens a platform or toggles a fetcher · type to filter",
+            ),
+            done,
         )
 
     def action_edit_entry(self) -> None:

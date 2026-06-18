@@ -201,6 +201,14 @@ ModalScreen {
     height: 85%;
 }
 
+/* The multi-select add-fetcher modal gets a roomier default than .wide so the
+   checkbox list + live selection sit side by side comfortably. */
+#modal-card.multi-pick {
+    width: 90%;
+    max-width: 100%;
+    height: 85%;
+}
+
 #modal-title {
     text-style: bold;
 }
@@ -260,4 +268,30 @@ ModalScreen {
 #picker-list {
     height: 16;
     margin-top: 1;
+}
+
+/* Multi-select add-fetcher modal: checkbox list (left) + live picked list
+   (right), inside the .wide card. */
+#multi-pick-split {
+    height: 1fr;
+    padding-top: 1;
+}
+#multi-pick-left {
+    width: 2fr;
+    padding-right: 2;
+}
+#multi-pick-tree {
+    height: 1fr;
+    margin-top: 1;
+    background: $background;
+}
+#multi-pick-tree > .tree--cursor { background: $primary; color: $background; text-style: bold; }
+#multi-pick-tree > .tree--guides { color: $panel; }
+#multi-pick-right {
+    width: 1fr;
+    border-left: round $panel;
+    padding-left: 2;
+}
+#multi-pick-chosen {
+    padding-top: 1;
 }
