@@ -39,6 +39,53 @@ _DEFAULT_TIMEOUT_SEC = 600
 # (matches the shell convention for SIGTERM-on-timeout).
 _TIMEOUT_EXIT_CODE = 124
 
+# Mask resolved secret VALUES out of captured fetcher output before it is
+# persisted (envelope metadata.error, _run_metadata.json stderr_tail) or streamed
+# to a front-end. The runner is the only place that knows the exact values it
+# injected, so we redact those literals — not patterns/guesses. Values shorter
+# than _MIN_SECRET_LEN_TO_MASK are left alone so a trivial secret like "1"/"true"
+# can't blank out unrelated text and corrupt the evidence. This masks only what
+# the runner injected verbatim; a secret the fetcher DERIVES at runtime or
+# transforms (encodes/truncates) won't match, so fetchers must still never print
+# secrets — see docs/envelope_design.md.
+_REDACTION_PLACEHOLDER = "***REDACTED***"
+_MIN_SECRET_LEN_TO_MASK = 5
+
+
+def _redact(text: str, secret_values) -> str:
+    """Replace each known secret value in `text` with a placeholder. Longest
+    first, so a value that contains another is fully masked before its substring
+    is processed. Safe on empty/None inputs."""
+    if not text or not secret_values:
+        return text
+    maskable = sorted(
+        (s for s in secret_values if isinstance(s, str) and len(s) >= _MIN_SECRET_LEN_TO_MASK),
+        key=len,
+        reverse=True,
+    )
+    for value in maskable:
+        if value in text:
+            text = text.replace(value, _REDACTION_PLACEHOLDER)
+    return text
+
+
+# passthrough_env mixes credential material (AWS_SECRET_ACCESS_KEY,
+# AWS_SESSION_TOKEN, …) with non-sensitive identity/region selectors (AWS_PROFILE,
+# AWS_DEFAULT_REGION, AWS_ROLE_ARN, …) and path/endpoint vars (…_FILE, …_URI). We
+# mask the credential ones out of captured output, but NOT the selectors/paths —
+# region/profile/ARN are legitimate evidence content and masking them would
+# corrupt the evidence.
+_SENSITIVE_NAME_PARTS = ("SECRET", "TOKEN", "PASSWORD", "PASSWD", "CREDENTIAL", "PRIVATE_KEY")
+
+
+def _is_sensitive_env_name(name: str) -> bool:
+    """Heuristic: does this env var NAME denote credential material (vs. an
+    identity/region selector or a file/endpoint path)?"""
+    up = name.upper()
+    if up.endswith("_FILE") or up.endswith("_URI"):
+        return False
+    return any(part in up for part in _SENSITIVE_NAME_PARTS)
+
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -58,6 +105,7 @@ def _apply_config(
     platform_spec: Optional[PlatformSpec],
     platform_cfg: Optional[PlatformConfig],
     entry: ManifestEntry,
+    secret_sink: Optional[set] = None,
 ) -> None:
     """Merge config (platform defaults <- platform values <- per-fetcher values)
     and inject each field that declares an `env` mapping. Also lets the
@@ -90,7 +138,13 @@ def _apply_config(
         passthrough.update(platform_cfg.passthrough_env)
     for var in passthrough:
         if var in os.environ:
-            env[var] = os.environ[var]
+            value = os.environ[var]
+            env[var] = value
+            # Ambient creds (AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN, …) are
+            # injected verbatim like declared secrets, so mask them out of
+            # captured output too; identity/region/path selectors are not masked.
+            if secret_sink is not None and _is_sensitive_env_name(var):
+                secret_sink.add(value)
 
 
 def _build_env(
@@ -100,6 +154,7 @@ def _build_env(
     output_dir: Path,
     platform_spec: Optional[PlatformSpec] = None,
     platform_cfg: Optional[PlatformConfig] = None,
+    secret_sink: Optional[set] = None,
 ) -> Dict[str, str]:
     """Build the env dict to pass to a single fetcher invocation.
 
@@ -112,7 +167,7 @@ def _build_env(
     env["PYTHONUNBUFFERED"] = "1"
     env["EVIDENCE_DIR"] = str(output_dir.resolve())
 
-    _apply_config(env, fetcher, platform_spec, platform_cfg, entry)
+    _apply_config(env, fetcher, platform_spec, platform_cfg, entry, secret_sink)
 
     for secret in fetcher.secrets:
         if secret.per_target:
@@ -126,14 +181,20 @@ def _build_env(
                 raise RuntimeError(
                     f"{fetcher.name}: target is missing per_target secret '{secret.name}'"
                 )
-            env[secret.env] = resolve(ref)
+            resolved = resolve(ref)
+            env[secret.env] = resolved
+            if secret_sink is not None:
+                secret_sink.add(resolved)
         else:
             ref = entry.secrets.get(secret.name)
             if ref is None:
                 raise RuntimeError(
                     f"{fetcher.name}: manifest entry is missing secret '{secret.name}'"
                 )
-            env[secret.env] = resolve(ref)
+            resolved = resolve(ref)
+            env[secret.env] = resolved
+            if secret_sink is not None:
+                secret_sink.add(resolved)
 
     if target is not None:
         for field_name, field_spec in fetcher.target_schema.items():
@@ -150,15 +211,18 @@ def _build_env(
     return env
 
 
-def _drain(stream, sink: List[str], on_line: Optional[Callable[[str], None]]) -> None:
+def _drain(stream, sink: List[str], on_line: Optional[Callable[[str], None]],
+           secret_values=None) -> None:
     """Read a subprocess pipe to EOF, accumulating lines and optionally
     forwarding each to on_line. Runs in its own thread so stdout/stderr are
-    drained concurrently (no pipe-buffer deadlock) and stdout can stream live."""
+    drained concurrently (no pipe-buffer deadlock) and stdout can stream live.
+    Forwarded lines are secret-redacted so a live front-end never shows an
+    injected secret value; the accumulated sink is redacted once at the end."""
     try:
         for line in stream:
             sink.append(line)
             if on_line is not None:
-                on_line(line.rstrip("\n"))
+                on_line(_redact(line.rstrip("\n"), secret_values))
     finally:
         stream.close()
 
@@ -169,6 +233,7 @@ def _invoke(
     target: Optional[TargetInstance],
     output_dir: Path,
     on_line: Optional[Callable[[str], None]] = None,
+    secret_values=None,
 ) -> InvocationResult:
     """Run one fetcher invocation.
 
@@ -203,8 +268,8 @@ def _invoke(
 
     stdout_lines: List[str] = []
     stderr_lines: List[str] = []
-    t_out = threading.Thread(target=_drain, args=(proc.stdout, stdout_lines, on_line))
-    t_err = threading.Thread(target=_drain, args=(proc.stderr, stderr_lines, None))
+    t_out = threading.Thread(target=_drain, args=(proc.stdout, stdout_lines, on_line, secret_values))
+    t_err = threading.Thread(target=_drain, args=(proc.stderr, stderr_lines, None, secret_values))
     t_out.start()
     t_err.start()
 
@@ -221,8 +286,8 @@ def _invoke(
     t_err.join()
 
     exit_code = _TIMEOUT_EXIT_CODE if timed_out else proc.returncode
-    stdout = "".join(stdout_lines)
-    stderr = "".join(stderr_lines)
+    stdout = _redact("".join(stdout_lines), secret_values)
+    stderr = _redact("".join(stderr_lines), secret_values)
     if timed_out:
         stderr += f"\nrunner: killed — exceeded timeout of {timeout}s"
 
@@ -262,8 +327,9 @@ def run_entry(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not fetcher.supports_targets:
-        env = _build_env(fetcher, entry, None, output_dir, platform_spec, platform_cfg)
-        return [_invoke(fetcher, env, None, output_dir, on_line)]
+        secrets_seen: set = set()
+        env = _build_env(fetcher, entry, None, output_dir, platform_spec, platform_cfg, secrets_seen)
+        return [_invoke(fetcher, env, None, output_dir, on_line, secrets_seen)]
 
     if not entry.targets:
         # No targets[] given. If every target field is optional, run once with the
@@ -274,14 +340,16 @@ def run_entry(
             raise RuntimeError(
                 f"{fetcher.name}: supports_targets but manifest entry has no targets[]"
             )
-        env = _build_env(fetcher, entry, None, output_dir, platform_spec, platform_cfg)
-        return [_invoke(fetcher, env, None, output_dir, on_line)]
+        secrets_seen = set()
+        env = _build_env(fetcher, entry, None, output_dir, platform_spec, platform_cfg, secrets_seen)
+        return [_invoke(fetcher, env, None, output_dir, on_line, secrets_seen)]
 
     results = []
     for target in entry.targets:
         try:
-            env = _build_env(fetcher, entry, target, output_dir, platform_spec, platform_cfg)
-            results.append(_invoke(fetcher, env, target, output_dir, on_line))
+            secrets_seen = set()
+            env = _build_env(fetcher, entry, target, output_dir, platform_spec, platform_cfg, secrets_seen)
+            results.append(_invoke(fetcher, env, target, output_dir, on_line, secrets_seen))
         except (RuntimeError, SecretResolutionError) as e:
             now = _utc_now()
             results.append(InvocationResult(
@@ -293,7 +361,7 @@ def run_entry(
                 duration_sec=0.0,
                 exit_code=255,
                 stdout="",
-                stderr=f"runner: failed to set up target invocation: {e}",
+                stderr=_redact(f"runner: failed to set up target invocation: {e}", secrets_seen),
                 outputs=[],
             ))
     return results

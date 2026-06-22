@@ -57,7 +57,7 @@ file self-describing and gives the uploader **one shape** to consume instead of
 | `collected_at` | string (ISO-8601 UTC) | runner | When the invocation ran |
 | `status` | `success`\|`failed` | derived from `exit_code` | Did collection succeed |
 | `exit_code` | int | runner | Raw exit code (incl. 124 = timeout) |
-| `error` | string (optional) | runner | Bounded stderr tail; present only when `status` = `failed` |
+| `error` | string (optional) | runner | Bounded stderr tail, with injected secret values redacted (see *Secrets in stderr* below); present only when `status` = `failed` |
 | `evidence_set` | object (optional) | fetcher.yaml | `reference_id`/`name` (+ `instructions`/`description` when present) for uploader routing; present when the fetcher declares one |
 
 `schema_version` (top level) versions the envelope format itself, so it can
@@ -136,6 +136,21 @@ def wrap_outputs(result, fetcher, run_id, run_dir):
   (each `InvocationResult.outputs` is the per-target diff, so attribution is correct).
 - **Failure** — the payload may be partial or empty; `status: failed`, `exit_code`,
   and `error` (stderr tail) make that explicit. The file is still wrapped.
+- **Secrets in stderr** — the runner masks the secret values it injected for the
+  invocation out of the captured `stdout`/`stderr` (each replaced with
+  `***REDACTED***`) before building `error` / `_run_metadata.json` and before
+  streaming to a front-end. *Covered:* every value from the fetcher's `secrets[]`
+  block, plus `passthrough_env` ambient **credentials** (vars whose name looks
+  sensitive — `*SECRET*`/`*TOKEN*`/`*PASSWORD*`/`*CREDENTIAL*`; identity/region
+  selectors like `AWS_PROFILE`/`AWS_DEFAULT_REGION` and `*_FILE`/`*_URI` paths are
+  deliberately left intact, since they are legitimate evidence content). This is
+  an exact-value backstop, not a pattern scrub or full DLP. *Not covered:*
+  `config`/`target` field values (declared non-secret — they often ARE legitimate
+  evidence such as a region or bucket name, so they must never carry a secret); a
+  secret the fetcher *derives* at runtime or *transforms* (encodes/truncates); and
+  a secret spanning a newline in the *live* stream only (the persisted copy
+  re-joins and masks it). **Fetchers must still never print secret values** —
+  `error` is customer-visible (it ships inside the uploaded envelope).
 - **Non-JSON outputs** (`output.type: csv|html`) — out of scope for v0.x; all 107
   current fetchers are JSON. Later: a payload-by-reference variant (`payload_path`
   + `content_type`) rather than inlining. Note it, don't build it.
