@@ -137,6 +137,89 @@ def catalog(root: Path) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# KSI coverage — join fetcher `ksis` against the FedRAMP 20x reference
+# --------------------------------------------------------------------------- #
+
+def _load_ksi_reference(root: Path) -> dict:
+    """Load the canonical FedRAMP 20x KSI reference (the coverage denominator)."""
+    return yaml.safe_load((root / "framework" / "reference" / "ksis.yaml").read_text())
+
+
+def ksi_coverage(root: Path) -> dict:
+    """Coverage of the FedRAMP 20x KSIs by discovered fetchers.
+
+    Joins each fetcher's `ksis` against framework/reference/ksis.yaml and returns
+    one presentation-agnostic model — per-KSI status (covered/gap/organizational),
+    per-family rollups, and a summary. The CLI, `--json`, and TUI all render this.
+
+    status: `covered` if any fetcher maps to it; else `gap` when it's
+    config-evidenceable; else `organizational` (evidenced by HR/training/manual,
+    not cloud config). coverage_pct is over the config-evidenceable set only.
+    """
+    ref = _load_ksi_reference(root)
+    fetchers = discover_fetchers(root)
+
+    by_ksi: Dict[str, List[str]] = {}
+    for f in fetchers.values():
+        for k in getattr(f, "ksis", None) or []:
+            by_ksi.setdefault(k, []).append(f.name)
+    for names in by_ksi.values():
+        names.sort()
+
+    families = ref.get("families", {})
+    ref_ksis = ref.get("ksis", [])
+    ref_ids = {k["id"] for k in ref_ksis}
+
+    ksi_entries = []
+    for k in ref_ksis:
+        fetchers_for = by_ksi.get(k["id"], [])
+        evidenceable = bool(k.get("evidenceable", True))
+        status = "covered" if fetchers_for else ("gap" if evidenceable else "organizational")
+        ksi_entries.append({
+            "id": k["id"],
+            "family": k.get("family"),
+            "statement": k.get("statement"),
+            "evidenceable": evidenceable,
+            "status": status,
+            "fetchers": fetchers_for,
+        })
+
+    fam_rollup = []
+    for fam, fam_name in families.items():
+        members = [e for e in ksi_entries if e["family"] == fam]
+        evi = [e for e in members if e["evidenceable"]]
+        fam_rollup.append({
+            "family": fam,
+            "name": fam_name,
+            "total": len(members),
+            "evidenceable": len(evi),
+            "covered": len([e for e in evi if e["fetchers"]]),
+            "gaps": [e["id"] for e in evi if not e["fetchers"]],
+        })
+
+    evi_all = [e for e in ksi_entries if e["evidenceable"]]
+    covered_all = [e for e in evi_all if e["fetchers"]]
+    gaps_all = [e for e in evi_all if not e["fetchers"]]
+    organizational = [e for e in ksi_entries if not e["evidenceable"]]
+    unknown = sorted(k for k in by_ksi if k not in ref_ids)
+
+    return {
+        "release": ref.get("release"),
+        "summary": {
+            "total": len(ksi_entries),
+            "evidenceable": len(evi_all),
+            "covered": len(covered_all),
+            "gaps": len(gaps_all),
+            "organizational": len(organizational),
+            "coverage_pct": round(100 * len(covered_all) / len(evi_all), 1) if evi_all else 0.0,
+        },
+        "families": fam_rollup,
+        "ksis": ksi_entries,
+        "unknown_ksis": [{"id": k, "fetchers": by_ksi[k]} for k in unknown],
+    }
+
+
+# --------------------------------------------------------------------------- #
 # Manifest read / write
 # --------------------------------------------------------------------------- #
 

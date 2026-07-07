@@ -1,0 +1,103 @@
+# FedRAMP 20x Key Security Indicators — the coverage denominator.
+#
+# This is the canonical list of KSIs the framework measures fetcher coverage
+# against. Each fetcher declares the KSIs its evidence speaks to via `ksis:` in
+# its fetcher.yaml; api.ksi_coverage() joins the two.
+#
+# PROVISIONAL (release 25.05C, Phase One). Statements are paraphrased from
+# docs/ksi_prowler_mapping.md — reconcile against the official FedRAMP 20x KSI
+# doc when remapping to the newer release:
+#   https://github.com/FedRAMP/docs/blob/main/tools/site/content/20x/phase1/key-security-indicators.md
+#
+# `evidenceable: true`  = obtainable from tool/cloud configuration (a fetcher can
+#                         produce it; if none does yet it shows as a GAP).
+# `evidenceable: false` = organizational (training, policy, plans, incident docs,
+#                         vendor vetting). Not a config gap; evidenced by HR/
+#                         training tools (KnowBe4, Rippling) or manual evidence.
+
+release: "FedRAMP 20x KSI — release 25.05C Phase One (provisional)"
+
+families:
+  CNA: Cloud Native Architecture
+  SVC: Service Configuration
+  MLA: Monitoring, Logging & Auditing
+  IAM: Identity & Access Management
+  CMT: Change Management
+  RPL: Recovery Planning
+  PIY: Policy & Inventory
+  TPR: Third-Party Information Resources
+  CED: Cybersecurity Education
+  INR: Incident Reporting
+
+ksis:
+  # --- CNA: Cloud Native Architecture (config) ---
+  - {id: KSI-CNA-01, family: CNA, evidenceable: true,  statement: Limit and control inbound and outbound network traffic.}
+  - {id: KSI-CNA-02, family: CNA, evidenceable: true,  statement: Minimize the attack surface and lateral movement.}
+  - {id: KSI-CNA-03, family: CNA, evidenceable: true,  statement: Enforce logical traffic-flow controls and network segmentation.}
+  - {id: KSI-CNA-04, family: CNA, evidenceable: true,  statement: Use immutable infrastructure.}
+  - {id: KSI-CNA-05, family: CNA, evidenceable: true,  statement: Protect against denial-of-service attacks.}
+  - {id: KSI-CNA-06, family: CNA, evidenceable: true,  statement: Ensure high availability and rapid recovery.}
+  - {id: KSI-CNA-07, family: CNA, evidenceable: true,  statement: Enforce security best practices on hosts and containers.}
+
+  # --- SVC: Service Configuration (config) ---
+  - {id: KSI-SVC-01, family: SVC, evidenceable: true,  statement: Harden and consistently configure services.}
+  - {id: KSI-SVC-02, family: SVC, evidenceable: true,  statement: Encrypt network traffic in transit (TLS).}
+  - {id: KSI-SVC-03, family: SVC, evidenceable: true,  statement: Encrypt data at rest.}
+  - {id: KSI-SVC-04, family: SVC, evidenceable: true,  statement: Centrally manage and enforce configuration.}
+  - {id: KSI-SVC-05, family: SVC, evidenceable: true,  statement: Enforce data integrity using cryptography.}
+  - {id: KSI-SVC-06, family: SVC, evidenceable: true,  statement: Automate key management and rotation.}
+  - {id: KSI-SVC-07, family: SVC, evidenceable: true,  statement: Apply risk-informed patching.}
+
+  # --- MLA: Monitoring, Logging & Auditing (config) ---
+  - {id: KSI-MLA-01, family: MLA, evidenceable: true,  statement: Centralized, tamper-resistant logging / SIEM.}
+  - {id: KSI-MLA-02, family: MLA, evidenceable: true,  statement: Regularly review and audit logs.}
+  - {id: KSI-MLA-03, family: MLA, evidenceable: true,  statement: Detect and remediate vulnerabilities.}
+  - {id: KSI-MLA-04, family: MLA, evidenceable: true,  statement: Perform authenticated vulnerability scanning.}
+  - {id: KSI-MLA-05, family: MLA, evidenceable: true,  statement: Evaluate infrastructure-as-code and configuration.}
+  - {id: KSI-MLA-06, family: MLA, evidenceable: true,  statement: Centrally track vulnerabilities.}
+
+  # --- IAM: Identity & Access Management (config) ---
+  - {id: KSI-IAM-01, family: IAM, evidenceable: true,  statement: Enforce phishing-resistant MFA.}
+  - {id: KSI-IAM-02, family: IAM, evidenceable: true,  statement: Enforce passwordless or strong-password + MFA authentication.}
+  - {id: KSI-IAM-03, family: IAM, evidenceable: true,  statement: Securely authenticate non-user / service accounts.}
+  - {id: KSI-IAM-04, family: IAM, evidenceable: true,  statement: Enforce least-privilege access (RBAC/ABAC/JIT).}
+  - {id: KSI-IAM-05, family: IAM, evidenceable: true,  statement: Apply zero-trust design principles.}
+  - {id: KSI-IAM-06, family: IAM, evidenceable: true,  statement: Detect and respond to suspicious privileged-account activity.}
+  - {id: KSI-IAM-07, family: IAM, evidenceable: true,  statement: Automate account lifecycle management.}
+
+  # --- CMT: Change Management (partial) ---
+  - {id: KSI-CMT-01, family: CMT, evidenceable: true,  statement: Log and monitor system modifications.}
+  - {id: KSI-CMT-02, family: CMT, evidenceable: true,  statement: Detect and control configuration drift.}
+  - {id: KSI-CMT-03, family: CMT, evidenceable: true,  statement: Automatically test and validate changes.}
+  - {id: KSI-CMT-04, family: CMT, evidenceable: true,  statement: Review and approve changes before release.}
+  - {id: KSI-CMT-05, family: CMT, evidenceable: false, statement: Maintain a formal change-management policy.}
+
+  # --- RPL: Recovery Planning (only backups are config-evidenceable) ---
+  - {id: KSI-RPL-01, family: RPL, evidenceable: false, statement: Define recovery objectives (RTO/RPO).}
+  - {id: KSI-RPL-02, family: RPL, evidenceable: false, statement: Maintain a documented recovery plan.}
+  - {id: KSI-RPL-03, family: RPL, evidenceable: true,  statement: Perform and validate system backups.}
+  - {id: KSI-RPL-04, family: RPL, evidenceable: false, statement: Regularly test the recovery plan.}
+
+  # --- PIY: Policy & Inventory (only inventory is config-evidenceable) ---
+  - {id: KSI-PIY-01, family: PIY, evidenceable: true,  statement: Maintain an up-to-date asset inventory.}
+  - {id: KSI-PIY-02, family: PIY, evidenceable: false, statement: Operate a vulnerability disclosure program.}
+  - {id: KSI-PIY-03, family: PIY, evidenceable: false, statement: Follow a secure software development lifecycle.}
+  - {id: KSI-PIY-04, family: PIY, evidenceable: false, statement: Document security and privacy roles and responsibilities.}
+  - {id: KSI-PIY-05, family: PIY, evidenceable: false, statement: Maintain adequate security staffing and budget.}
+  - {id: KSI-PIY-06, family: PIY, evidenceable: false, statement: Manage supply-chain risk (SBOM / dependency policy).}
+  - {id: KSI-PIY-07, family: PIY, evidenceable: false, statement: Maintain required security and privacy policies.}
+
+  # --- TPR: Third-Party Information Resources (only upstream-vuln monitoring is config) ---
+  - {id: KSI-TPR-01, family: TPR, evidenceable: false, statement: Identify third-party information resources.}
+  - {id: KSI-TPR-02, family: TPR, evidenceable: false, statement: Vet third-party providers.}
+  - {id: KSI-TPR-03, family: TPR, evidenceable: false, statement: Monitor third-party compliance.}
+  - {id: KSI-TPR-04, family: TPR, evidenceable: true,  statement: Monitor third-party software for upstream vulnerabilities.}
+
+  # --- CED: Cybersecurity Education (organizational — KnowBe4 / training records) ---
+  - {id: KSI-CED-01, family: CED, evidenceable: false, statement: Provide security-awareness training.}
+  - {id: KSI-CED-02, family: CED, evidenceable: false, statement: Provide role-based / specialized security training.}
+
+  # --- INR: Incident Reporting (organizational — incident docs / process) ---
+  - {id: KSI-INR-01, family: INR, evidenceable: false, statement: Report incidents to required stakeholders.}
+  - {id: KSI-INR-02, family: INR, evidenceable: false, statement: Maintain incident logs and after-action reports.}
+  - {id: KSI-INR-03, family: INR, evidenceable: false, statement: Maintain an incident-response process.}

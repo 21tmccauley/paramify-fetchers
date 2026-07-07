@@ -75,6 +75,7 @@ class Fetcher:
     path: Path
     config_schema: Dict[str, ConfigField] = field(default_factory=dict)
     evidence_set: Optional["EvidenceSet"] = None
+    ksis: List[str] = field(default_factory=list)
 
     @property
     def entry_path(self) -> Path:

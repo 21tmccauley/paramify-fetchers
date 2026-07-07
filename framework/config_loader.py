@@ -126,6 +126,7 @@ def _parse_fetcher(data: dict, path: Path) -> Fetcher:
         path=path.resolve(),
         config_schema=_parse_config_schema(data.get("config_schema")),
         evidence_set=evidence_set,
+        ksis=list(data.get("ksis") or []),
     )
 
 

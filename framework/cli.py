@@ -11,6 +11,7 @@ Read / discover:
   paramify list [--json]                       # discovered fetchers (flat)
   paramify catalog [--json]                    # categories -> fetchers -> fields
   paramify describe <fetcher> [--json]
+  paramify ksi [--json]                        # FedRAMP 20x KSI coverage
   paramify manifests [--json]                  # discovered run manifests
   paramify runs [--output-dir DIR] [--json]    # past runs under an output dir
   paramify evidence <path> [--json]            # read one evidence file
@@ -292,6 +293,37 @@ def describe_cmd(
                 req = "required" if fld.get("required") else "optional"
                 extra = f" default={fld['default']}" if fld.get("default") is not None else ""
                 typer.echo(f"    - {fld['name']} ({fld['type']}, {req}){extra}")
+
+
+@app.command("ksi")
+def ksi_cmd(json_out: bool = typer.Option(False, "--json", help="Emit JSON")):
+    """Show FedRAMP 20x KSI coverage across discovered fetchers."""
+    root = api.find_repo_root()
+    cov = api.ksi_coverage(root)
+    if json_out:
+        typer.echo(json.dumps(cov, indent=2))
+        return
+    s = cov["summary"]
+    typer.echo(f"FedRAMP 20x KSI coverage — {cov['release']}\n")
+    for fam in cov["families"]:
+        if fam["evidenceable"] == 0:
+            typer.echo(f"  {fam['family']:5s} {fam['name']:34s} organizational ({fam['total']})")
+        else:
+            gaps = f"   gaps: {', '.join(fam['gaps'])}" if fam["gaps"] else ""
+            typer.echo(f"  {fam['family']:5s} {fam['name']:34s} {fam['covered']}/{fam['evidenceable']}{gaps}")
+    typer.echo(
+        f"\n  Config-evidenceable: {s['covered']}/{s['evidenceable']} covered "
+        f"({s['coverage_pct']}%)  ·  {s['gaps']} gaps  ·  {s['organizational']} organizational"
+    )
+    gaps = [e for e in cov["ksis"] if e["status"] == "gap"]
+    if gaps:
+        typer.echo("\n  Gaps (config-evidenceable, no fetcher yet):")
+        for e in gaps:
+            typer.echo(f"    {e['id']:14s} {e['statement'] or ''}")
+    if cov["unknown_ksis"]:
+        typer.echo("\n  ⚠ KSIs used by fetchers but absent from the reference:")
+        for u in cov["unknown_ksis"]:
+            typer.echo(f"    {u['id']:14s} {', '.join(u['fetchers'])}")
 
 
 @app.command("manifests")
