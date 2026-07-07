@@ -304,22 +304,27 @@ def ksi_cmd(json_out: bool = typer.Option(False, "--json", help="Emit JSON")):
         typer.echo(json.dumps(cov, indent=2))
         return
     s = cov["summary"]
-    typer.echo(f"FedRAMP 20x KSI coverage — {cov['release']}\n")
+    release = cov["release"].split("—", 1)[-1].strip() if "—" in cov["release"] else cov["release"]
+    typer.echo("FedRAMP 20x KSI coverage")
+    typer.echo(f"{release}\n")
+
+    bar_w = 10
     for fam in cov["families"]:
-        if fam["evidenceable"] == 0:
-            typer.echo(f"  {fam['family']:5s} {fam['name']:34s} organizational ({fam['total']})")
-        else:
-            gaps = f"   gaps: {', '.join(fam['gaps'])}" if fam["gaps"] else ""
-            typer.echo(f"  {fam['family']:5s} {fam['name']:34s} {fam['covered']}/{fam['evidenceable']}{gaps}")
+        evi = fam["evidenceable"]
+        if evi == 0:
+            typer.echo(f"  {fam['family']:4s} {fam['name']:33s} {'·' * bar_w}  organizational ({fam['total']})")
+            continue
+        filled = round(bar_w * fam["covered"] / evi)
+        bar = "█" * filled + "░" * (bar_w - filled)
+        note = ""
+        if fam["gaps"]:
+            note = f"   gap{'s' if len(fam['gaps']) > 1 else ''}: " + ", ".join(fam["gaps"])
+        typer.echo(f"  {fam['family']:4s} {fam['name']:33s} {bar}  {fam['covered']}/{evi}{note}")
+
     typer.echo(
-        f"\n  Config-evidenceable: {s['covered']}/{s['evidenceable']} covered "
-        f"({s['coverage_pct']}%)  ·  {s['gaps']} gaps  ·  {s['organizational']} organizational"
+        f"\n  {s['covered']}/{s['evidenceable']} config-evidenceable KSIs covered  ·  "
+        f"{s['coverage_pct']}%  ·  {s['gaps']} gaps  ·  {s['organizational']} organizational"
     )
-    gaps = [e for e in cov["ksis"] if e["status"] == "gap"]
-    if gaps:
-        typer.echo("\n  Gaps (config-evidenceable, no fetcher yet):")
-        for e in gaps:
-            typer.echo(f"    {e['id']:14s} {e['statement'] or ''}")
     if cov["unknown_ksis"]:
         typer.echo("\n  ⚠ KSIs used by fetchers but absent from the reference:")
         for u in cov["unknown_ksis"]:
